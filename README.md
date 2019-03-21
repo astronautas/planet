@@ -84,7 +84,7 @@ places to start when modifying the code:
 
 ## Dependencies
 
-- dm_control (with `egl` or `osmesa` [rendering option][dmc-rendering])
+- dm_control (see https://github.com/deepmind/dm_control#installation-and-requirements #2) (with `egl` or `osmesa` [rendering option][dmc-rendering])
 - gym
 - ruamel.yaml
 - scikit-image
