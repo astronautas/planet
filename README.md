@@ -84,14 +84,15 @@ places to start when modifying the code:
 
 ## Dependencies
 
-- dm_control
+- dm_control (with `egl` or `osmesa` [rendering option][dmc-rendering])
 - gym
-- mujoco_py
 - ruamel.yaml
 - scikit-image
 - scipy
-- tensorflow-gpu
-- tensorflow_probability
+- tensorflow-gpu==1.12.0
+- tensorflow_probability==0.5.0
+
+[dmc-rendering]: https://github.com/deepmind/dm_control#rendering
 
 Disclaimer: This is not an official Google product.
 
