@@ -84,7 +84,6 @@ def walker_walk(config, params):
       _dm_control_env, action_repeat, max_length, 'walker', 'walk')
   return Task('walker_walk', env_ctor, max_length, state_components)
 
-
 def humanoid_walk(config, params):
   action_repeat = params.get('action_repeat', 2)
   max_length = 1000 // action_repeat
@@ -95,7 +94,6 @@ def humanoid_walk(config, params):
       _dm_control_env, action_repeat, max_length, 'humanoid', 'walk')
   return Task('humanoid_walk', env_ctor, max_length, state_components)
 
-
 def _dm_control_env(action_repeat, max_length, domain, task):
   from dm_control import suite
   def env_ctor():
@@ -105,5 +103,29 @@ def _dm_control_env(action_repeat, max_length, domain, task):
     env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
     env = control.wrappers.ConvertTo32Bit(env)
     return env
+  env = control.wrappers.ExternalProcess(env_ctor)
+  return env
+
+# VizDoom tasks
+def vizdoom_basic(config, params):
+  action_repeat = params.get('action_repeat', 1)
+  max_length = 1000 // action_repeat
+  state_components = ['reward']
+  env_ctor = functools.partial(_vizdoom_env, action_repeat, max_length, 'VizdoomBasic-v0')
+
+  return Task('vizdoom_basic', env_ctor, max_length, state_components)
+
+def _vizdoom_env(action_repeat, max_length, env_name):
+  import gym
+  import vizdoomgym
+
+  def env_ctor():
+    env = control.wrappers.VizDoomWrapper(gym.make(env_name))
+    env = control.wrappers.ActionRepeat(env, action_repeat)
+    # env = control.wrappers.LimitDuration(env, max_length)
+    env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
+    env = control.wrappers.ConvertTo32Bit(env)
+    return env
+
   env = control.wrappers.ExternalProcess(env_ctor)
   return env
