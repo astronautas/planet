@@ -35,8 +35,8 @@ observing the next image.
 Find more information:
 
 - [Google AI Blog post][blog]
+- [Animated paper][website]
 - [Paper as PDF][paper]
-- [Paper as website][website]
 
 [blog]: https://ai.googleblog.com/2019/02/introducing-planet-deep-planning.html
 [paper]: https://danijar.com/publications/2019-planet.pdf
@@ -52,6 +52,9 @@ python3 -m planet.scripts.train  \
     --config default \
     --params '{tasks: [cheetah_run]}'
 ```
+
+The code prints `nan` as the score for iterations during which no summaries
+were computed.
 
 The available tasks are listed in `scripts/tasks.py`. The default parameters
 can be found in `scripts/configs.py`. To replicate the experiments in our
@@ -69,11 +72,7 @@ list of tasks:
 
 ## Modifications
 
-During development, you can set `--config debug` to reduce the episode length,
-batch size, and collect data more freqnently. This helps to quickly reach all
-parts of the code. You can use `--num_runs 1000 --resume_runs False` to start a
-run in a new sub directory every time to execute the script. These are good
-places to start when modifying the code:
+These are good places to start when modifying the code:
 
 | Directory | Description |
 | :-------- | :---------- |
@@ -82,17 +81,28 @@ places to start when modifying the code:
 | `models` | Add or modify latent transition models. |
 | `networks` | Add or modify encoder and  decoder networks. |
 
-## Dependencies
+Tips for development:
 
-- dm_control (see https://github.com/deepmind/dm_control#installation-and-requirements #2) (with `egl` or `osmesa` [rendering option][dmc-rendering])
+- You can set `--config debug` to reduce the episode length, batch size, and
+  collect data more freqnently. This helps to quickly reach all parts of the
+  code.
+- You can use `--num_runs 1000 --resume_runs False` to automatically start new
+  runs in sub directories of the logdir every time to execute the script.
+- Environments live in separate processes by default. Some environments work
+  better when separated into threads instead by specifying `--params
+  '{isolate_envs: thread}'`.
+
+## Dependencies
+The code was tested under Ubuntu 18 and uses these packages:
+
+- tensorflow-gpu==1.13.1
+- tensorflow_probability==0.6.0
+- dm_control (`egl` [rendering option][dmc-rendering] recommended)
 - gym
-- ruamel.yaml
 - scikit-image
 - scipy
-- tensorflow-gpu==1.12.0
-- tensorflow_probability==0.5.0
+- ruamel.yaml
 
 [dmc-rendering]: https://github.com/deepmind/dm_control#rendering
 
 Disclaimer: This is not an official Google product.
-

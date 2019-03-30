@@ -225,7 +225,7 @@ def apply_optimizers(loss, step, should_summarize, optimizers):
     return tf.cond(should_summarize, lambda: tf.summary.merge(summaries), str)
 
 
-def simulate_episodes(config, params, graph, name):
+def simulate_episodes(config, params, graph, expensive_summaries, name):
   def env_ctor():
     env = params.task.env_ctor()
     if params.save_episode_dir:
@@ -244,18 +244,10 @@ def simulate_episodes(config, params, graph, name):
   params = params.copy()
   params.update(agent_config)
   agent_config.update(params)
-  # Batch size larger crashes so we simulate the episodes individually.
-  summaries, returns = [], []
-  for index in range(params.batch_size):
-    # with tf.control_dependencies(summaries + returns):
-    with tf.variable_scope('simulate-{}'.format(index + 1)):
-      summary, return_ = control.simulate(
-          graph.step, env_ctor, params.task.max_length,
-          1, agent_config, name=name)
-    summaries.append(summary)
-    returns.append(return_)
-  summary = tf.summary.merge(summaries)
-  return_ = tf.reduce_mean(returns)
+  summary, return_ = control.simulate(
+      graph.step, env_ctor, params.task.max_length,
+      params.num_agents, agent_config, config.isolate_envs,
+      expensive_summaries, name=name)
   return summary, return_
 
 
@@ -276,20 +268,19 @@ def print_metrics(metrics, step, every):
 
 
 def collect_initial_episodes(config):
-  if config.source_train_dir:
-    tools.copy_directory(
-        config.source_train_dir, config.train_dir,
-        config.source_train_amount)
-  if config.source_test_dir:
-    tools.copy_directory(
-        config.source_test_dir, config.test_dir,
-        config.source_test_amount)
   items = config.random_collects.items()
   items = sorted(items, key=lambda x: x[0])
+  existing = {}
   for name, params in items:
-    message = 'Collecting {}+ random episodes ({}).'
-    tf.logging.info(message.format(params.num_episodes, name))
-    control.random_episodes(
-        params.task.env_ctor,
-        params.num_episodes,
-        params.save_episode_dir)
+    outdir = params.save_episode_dir
+    tf.gfile.MakeDirs(outdir)
+    if outdir not in existing:
+      existing[outdir] = len(tf.gfile.Glob(os.path.join(outdir, '*.npz')))
+    if params.num_episodes <= existing[outdir]:
+      existing[outdir] -= params.num_episodes
+    else:
+      remaining = params.num_episodes - existing[outdir]
+      existing[outdir] = 0
+      message = 'Collecting {} initial episodes ({}).'
+      tf.logging.info(message.format(remaining, name))
+      control.random_episodes(params.task.env_ctor, remaining, outdir)

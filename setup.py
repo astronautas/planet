@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import setuptools
 
-
 setuptools.setup(
     name='planetrl',
     version='1.0.0',
@@ -30,6 +29,10 @@ setuptools.setup(
     license='Apache 2.0',
     url='http://github.com/google-research/planet',
     install_requires=[
+        'gym',
+        'ruamel.yaml',
+        'scikit-image',
+        'scipy'
     ],
     packages=setuptools.find_packages(),
     classifiers=[
