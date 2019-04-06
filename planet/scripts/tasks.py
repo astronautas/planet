@@ -26,6 +26,11 @@ from planet import control
 from planet import networks
 from planet import tools
 
+from gym_vizdoom import (LIST_OF_ENVS, EXPLORATION_GOAL_FRAME, GOAL_REACHING_REWARD)
+import vizdoomgym
+
+# from gym_vizdoom.logging.navigation_video_writer import NavigationVideoWriter
+
 
 Task = collections.namedtuple(
     'Task', 'name, env_ctor, max_length, state_components')
@@ -139,26 +144,44 @@ def _gym_env(action_repeat, min_length, max_length, name, obs_is_image=False):
   env = control.wrappers.ConvertTo32Bit(env)
   return env
 
+def _gym_env_discrete(action_repeat, min_length, max_length, name, obs_is_image=False):
+  import gym
+  env = gym.make(name)
+  env = control.wrappers.ActionRepeat(env, action_repeat)
+  env = control.wrappers.NormalizeActions(env)
+  env = control.wrappers.MinimumDuration(env, min_length)
+  env = control.wrappers.MaximumDuration(env, max_length)
+
+  if obs_is_image:
+    env = control.wrappers.ObservationDict(env, 'image')
+    env = control.wrappers.ObservationToRender(env)
+  else:
+    env = control.wrappers.ObservationDict(env, 'state')
+  env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
+  env = control.wrappers.ConvertTo32Bit(env)
+  return env
+
 # VizDoom tasks
 def vizdoom_basic(config, params):
-  action_repeat = params.get('action_repeat', 1)
-  max_length = 1000 // action_repeat
+  action_repeat = params.get('action_repeat', 3)
+  max_length = 960 // action_repeat
+  # max_length = 400 // action_repeat
+  min_length = config.batch_shape[1]
   state_components = ['reward']
-  env_ctor = functools.partial(_vizdoom_env, action_repeat, max_length, 'VizdoomBasic-v0')
+  env_ctor = functools.partial(_gym_env_discrete, action_repeat, min_length, max_length, 'VizdoomBasic-v0', True)
 
   return Task('vizdoom_basic', env_ctor, max_length, state_components)
 
-def _vizdoom_env(action_repeat, max_length, env_name):
-  import gym
-  import vizdoomgym
+# def _vizdoom_env(action_repeat, max_length, env_name):
+#   import gym
 
-  def env_ctor():
-    env = control.wrappers.VizDoomWrapper(gym.make(env_name))
-    env = control.wrappers.ActionRepeat(env, action_repeat)
-    # env = control.wrappers.LimitDuration(env, max_length)
-    env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
-    env = control.wrappers.ConvertTo32Bit(env)
-    return env
+#   def env_ctor():
+#     env = control.wrappers.VizDoomWrapper(gym.make(env_name))
+#     env = control.wrappers.ActionRepeat(env, action_repeat)
+#     # env = control.wrappers.LimitDuration(env, max_length)
+#     env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
+#     env = control.wrappers.ConvertTo32Bit(env)
+#     return env
 
-  env = control.wrappers.ExternalProcess(env_ctor)
-  return env
+#   env = control.wrappers.ExternalProcess(env_ctor)
+#   return env

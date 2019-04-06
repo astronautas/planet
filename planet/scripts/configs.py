@@ -39,15 +39,26 @@ def default(config, params):
   config = _training_schedule(config, params)
   return config
 
+# Worked best: 10k train, 100 test, 1000k collect, 35,30
+# Train (-> collect) -> test -> repeat
+def reproduce(config, params):
+  with params.unlocked:
+    params.batch_shape = [33, 33]
+    params.train_steps = 50000
+    params.test_steps = 600
+    params.collect_every = 5000
+
+  config = default(config, params)
+  return config
 
 def debug(config, params):
   with params.unlocked:
     params.collect_every = 20
-    params.batch_shape = [5, 10]
-    params.train_steps = 30
-    params.test_steps = 30
+    params.batch_shape = [40, 10]
+    params.train_steps = 50
+    params.test_steps = 10
     params.max_steps = 100 * (30 * 30)
-    params.collect_every = 20
+    params.collect_every = 10
     params.num_seed_episodes = 2
   config = default(config, params)
   config.debug = True
@@ -58,7 +69,7 @@ def _data_processing(config, params):
   config.max_episodes = None
   config.scan_episodes_every = params.get('scan_episodes_every', 10)
   config.data_loader = params.get('data_loader', 'scan')
-  config.batch_shape = params.get('batch_shape', (50, 50))
+  config.batch_shape = params.get('batch_shape', (15, 50))
   config.num_chunks = params.get('num_chunks', 1)
   image_bits = params.get('image_bits', 5)
   config.preprocess_fn = functools.partial(
@@ -97,7 +108,7 @@ def _tasks(config, params):
   if tasks == 'all':
     tasks = [
         'cartpole_balance', 'cartpole_swingup', 'finger_spin', 'cheetah_run',
-        'cup_catch', 'walker_walk', 'vizdoom_basic']
+        'cup_catch', 'walker_walk', 'vizdoom_basic', 'gym_cheetah']
   tasks = [getattr(tasks_lib, name)(config, params) for name in tasks]
   config.isolate_envs = params.get('isolate_envs', 'thread')
   def common_spaces_ctor(task, action_spaces):
@@ -136,7 +147,7 @@ def _loss_functions(config, params):
 
 
 def _training_schedule(config, params):
-  config.train_steps = int(params.get('train_steps', 50000))
+  config.train_steps = int(params.get('train_steps', 2000))
   config.test_steps = int(params.get('test_steps', 100))
   config.max_steps = int(params.get('max_steps', 2e7))
   config.train_log_every = config.train_steps
