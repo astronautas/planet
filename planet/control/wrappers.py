@@ -31,6 +31,14 @@ import numpy as np
 import skimage.transform
 import tensorflow as tf
 
+import skimage.transform
+import tensorflow as tf
+from scipy.interpolate import interp1d
+
+from planet.tools import nested
+import cv2
+from gym.spaces import MultiDiscrete, Box
+
 from planet.tools import nested
 
 
@@ -265,6 +273,41 @@ class NormalizeActions(object):
     action = (action + 1) / 2 * (self._high - self._low) + self._low
     return self._env.step(action)
 
+class AtariDoneOutOfLives(object):
+  def __init__(self, env):
+    self._env = env
+  
+  def __getattr__(self, name):
+    return getattr(self._env, name)
+    
+  def step(self, action):
+    obs, reward, done, info = self._env.step(action)
+    
+    if info["ale.lives"] <= 0:
+      done = True
+      
+    return obs, reward, done, info
+  
+
+class DiscreteToBoxWrapper(object):
+  @property
+  def action_space(self):
+    lowa = np.full((self._env.action_space.n), -1.0)
+    higha = np.full((self._env.action_space.n), 1.0)
+
+    return Box(lowa, higha)
+
+  def __init__(self, env):
+    self._env = env
+  
+  def __getattr__(self, name):
+    return getattr(self._env, name)
+    
+  def step(self, action):
+    action = np.argmax(action)
+    obs, reward, done, info = self._env.step(action)
+
+    return obs, reward, done, info
 
 class DeepMindWrapper(object):
   """Wraps a DM Control environment into a Gym interface."""

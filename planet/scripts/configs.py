@@ -39,13 +39,23 @@ def default(config, params):
   config = _training_schedule(config, params)
   return config
 
+def default_smaller(config, params):
+  with params.unlocked:
+    params.batch_shape = [23, 50]
+    params.train_steps = 50000
+    params.test_steps = 100
+    params.collect_every = 5000
+
+  config = default(config, params)
+  return config
+
 # Worked best: 10k train, 100 test, 1000k collect, 35,30
 # Train (-> collect) -> test -> repeat
-def reproduce(config, params):
+def atari(config, params):
   with params.unlocked:
-    params.batch_shape = [33, 33]
+    params.batch_shape = [24, 49]
     params.train_steps = 50000
-    params.test_steps = 600
+    params.test_steps = 100
     params.collect_every = 5000
 
   config = default(config, params)
@@ -108,7 +118,7 @@ def _tasks(config, params):
   if tasks == 'all':
     tasks = [
         'cartpole_balance', 'cartpole_swingup', 'finger_spin', 'cheetah_run',
-        'cup_catch', 'walker_walk', 'vizdoom_basic', 'gym_cheetah']
+        'cup_catch', 'walker_walk', 'vizdoom_basic', 'gym_cheetah', 'gym_breakout']
   tasks = [getattr(tasks_lib, name)(config, params) for name in tasks]
   config.isolate_envs = params.get('isolate_envs', 'thread')
   def common_spaces_ctor(task, action_spaces):
@@ -133,7 +143,7 @@ def _loss_functions(config, params):
   config.free_nats = params.get('free_nats', 2.0)
   config.stop_os_posterior_gradient = True
   config.zero_step_losses.image = params.get('image_loss_scale', 1.0)
-  config.zero_step_losses.divergence = params.get('divergence_scale', 1.0)
+  config.zero_step_losses.divergence = params.get('divergence_scale', 1e-3)
   config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 0.1)
   config.zero_step_losses.reward = params.get('reward_scale', 10.0)
   config.overshooting = params.get('overshooting', config.batch_shape[1] - 1)

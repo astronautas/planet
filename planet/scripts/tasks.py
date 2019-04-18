@@ -26,6 +26,16 @@ from planet import control
 from planet import networks
 from planet import tools
 
+import skimage.transform
+import tensorflow as tf
+from scipy.interpolate import interp1d
+
+from planet.tools import nested
+import cv2
+from gym.spaces import MultiDiscrete, Box
+
+import math
+
 from gym_vizdoom import (LIST_OF_ENVS, EXPLORATION_GOAL_FRAME, GOAL_REACHING_REWARD)
 import vizdoomgym
 
@@ -118,6 +128,16 @@ def gym_racecar(config, params):
       'CarRacing-v0', obs_is_image=True)
   return Task('gym_racing', env_ctor, max_length, state_components)
 
+def gym_breakout(config, params):
+  action_repeat = params.get('action_repeat', 4)
+  max_one_collect_length = 200
+  max_length = 800
+  state_components = ['reward']
+  env_ctor = functools.partial(
+      _gym_atari, action_repeat, config.batch_shape[1], max_length,
+      'BreakoutNoFrameskip-v4', obs_is_image=True)
+  return Task('gym_assault', env_ctor, max_length, state_components)
+
 def _dm_control_env(action_repeat, max_length, domain, task):
   from dm_control import suite
   env = control.wrappers.DeepMindWrapper(suite.load(domain, task), (64, 64))
@@ -127,6 +147,25 @@ def _dm_control_env(action_repeat, max_length, domain, task):
   env = control.wrappers.ConvertTo32Bit(env)
   return env
 
+def _gym_atari(action_repeat, min_length, max_length, name, obs_is_image=False):
+  import gym
+
+  env = gym.make(name)
+
+  env = control.wrappers.DiscreteToBoxWrapper(env)
+  env = control.wrappers.ActionRepeat(env, action_repeat)
+  env = control.wrappers.MinimumDuration(env, min_length)
+  env = control.wrappers.AtariDoneOutOfLives(env)
+  env = control.wrappers.MaximumDuration(env, max_length / 2) # acting as barrier
+
+  if obs_is_image:
+    env = control.wrappers.ObservationDict(env, 'image')
+    env = control.wrappers.ObservationToRender(env)
+  else:
+    env = control.wrappers.ObservationDict(env, 'state')
+  env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
+  env = control.wrappers.ConvertTo32Bit(env)
+  return env
 
 def _gym_env(action_repeat, min_length, max_length, name, obs_is_image=False):
   import gym
