@@ -21,7 +21,6 @@ import tensorflow as tf
 
 from planet.tools import nested
 
-
 class MPCAgent(object):
 
   def __init__(self, batch_env, step, is_training, should_log, config):

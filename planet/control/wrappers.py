@@ -40,7 +40,8 @@ import cv2
 from gym.spaces import MultiDiscrete, Box
 
 from planet.tools import nested
-
+import matplotlib.pyplot as plt
+import skimage.color
 
 class ObservationDict(object):
 
@@ -135,6 +136,66 @@ class SelectObservations(object):
     obs = {key: obs[key] for key in self._keys}
     return obs
 
+class PixelObservationsAsGrayscale(object):
+
+  def __init__(self, env, size=(64, 64), dtype=np.uint8, key='image'):
+    assert isinstance(env.observation_space, gym.spaces.Dict)
+    self._env = env
+    self._size = size
+    self._dtype = dtype
+    self._key = key
+
+  def __getattr__(self, name):
+    return getattr(self._env, name)
+
+  @property
+  def observation_space(self):
+    high = {np.uint8: 255, np.float: 1.0}[self._dtype]
+    image = gym.spaces.Box(0, high, self._size + (1,), dtype=self._dtype)
+    spaces = self._env.observation_space.spaces.copy()
+    assert self._key not in spaces
+    spaces[self._key] = image
+
+    return gym.spaces.Dict(spaces)
+
+  @property
+  def action_space(self):
+    return self._env.action_space
+
+  def step(self, action):
+    obs, reward, done, info = self._env.step(action)
+    obs[self._key] = self._render_image()
+    return obs, reward, done, info
+
+  def reset(self):
+    obs = self._env.reset()
+    obs[self._key] = self._render_image()
+    return obs
+
+  def _render_image(self):
+    image = self._env.render('rgb_array')
+        
+    # Convert to grayscale
+    image = skimage.color.rgb2gray(image)
+
+    # Add the third channel, hack, make it one channel because conv layers expect 3
+    image = np.expand_dims(image, axis=2)
+    # image = np.stack((image,)*3, axis=-1)
+
+    if image.shape[:2] != self._size:
+      kwargs = dict(output_shape=self._size, mode='edge', order=1, preserve_range=True)
+      image = skimage.transform.resize(image, **kwargs).astype(image.dtype)
+      
+    if self._dtype and image.dtype != self._dtype:
+      if image.dtype in (np.float32, np.float64) and self._dtype == np.uint8:
+        image = (image * 255).astype(self._dtype)
+      elif image.dtype == np.uint8 and self._dtype in (np.float32, np.float64):
+        image = image.astype(self._dtype) / 255
+      else:
+        message = 'Cannot convert observations from {} to {}.'
+        raise NotImplementedError(message.format(image.dtype, self._dtype))
+
+    return image
 
 class PixelObservations(object):
 
@@ -173,10 +234,11 @@ class PixelObservations(object):
 
   def _render_image(self):
     image = self._env.render('rgb_array')
+
     if image.shape[:2] != self._size:
-      kwargs = dict(
-          output_shape=self._size, mode='edge', order=1, preserve_range=True)
+      kwargs = dict(output_shape=self._size, mode='edge', order=1, preserve_range=True)
       image = skimage.transform.resize(image, **kwargs).astype(image.dtype)
+      
     if self._dtype and image.dtype != self._dtype:
       if image.dtype in (np.float32, np.float64) and self._dtype == np.uint8:
         image = (image * 255).astype(self._dtype)
@@ -185,6 +247,7 @@ class PixelObservations(object):
       else:
         message = 'Cannot convert observations from {} to {}.'
         raise NotImplementedError(message.format(image.dtype, self._dtype))
+        
     return image
 
 
@@ -285,9 +348,45 @@ class AtariDoneOutOfLives(object):
     
     if info["ale.lives"] <= 0:
       done = True
-      
+
+    return obs, reward, done, info
+
+class ImageObservationToGrayscale(object):
+  def __init__(self, env):
+    self._env = env
+  
+  def __getattr__(self, name):
+    return getattr(self._env, name)
+    
+  def step(self, action):
+    obs, reward, done, info = self._env.step(action)
+    
+    if info["ale.lives"] <= 0:
+      done = True
+
+    return obs, reward, done, info  
+
+class AtariDoneAfterLosingALife(object):
+  def __init__(self, env):
+    self._env = env
+    self.last_lives = None
+  
+  def __getattr__(self, name):
+    return getattr(self._env, name)
+    
+  def step(self, action):
+    obs, reward, done, info = self._env.step(action)
+
+    if self.last_lives and self.last_lives > int(info["ale.lives"]):
+      done = True
+
+    self.last_lives = int(info["ale.lives"])
+
     return obs, reward, done, info
   
+  def reset(self):
+    self.last_lives = None
+    return self._env.reset()
 
 class DiscreteToBoxWrapper(object):
   @property

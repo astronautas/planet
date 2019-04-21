@@ -128,10 +128,18 @@ def gym_racecar(config, params):
       'CarRacing-v0', obs_is_image=True)
   return Task('gym_racing', env_ctor, max_length, state_components)
 
+def gym_seaquest(config, params):
+  action_repeat = params.get('action_repeat', 4)
+  max_length = 6000 // action_repeat
+  state_components = ['reward']
+  env_ctor = functools.partial(
+      _gym_atari, action_repeat, config.batch_shape[1], max_length,
+      'SeaquestNoFrameskip-v4', obs_is_image=True)
+  return Task('gym_seaquest', env_ctor, max_length, state_components)
+
 def gym_breakout(config, params):
   action_repeat = params.get('action_repeat', 4)
-  max_one_collect_length = 200
-  max_length = 800
+  max_length = 1600 // action_repeat
   state_components = ['reward']
   env_ctor = functools.partial(
       _gym_atari, action_repeat, config.batch_shape[1], max_length,
@@ -154,16 +162,17 @@ def _gym_atari(action_repeat, min_length, max_length, name, obs_is_image=False):
 
   env = control.wrappers.DiscreteToBoxWrapper(env)
   env = control.wrappers.ActionRepeat(env, action_repeat)
-  env = control.wrappers.MinimumDuration(env, min_length)
   env = control.wrappers.AtariDoneOutOfLives(env)
-  env = control.wrappers.MaximumDuration(env, max_length / 2) # acting as barrier
+  env = control.wrappers.AtariDoneAfterLosingALife(env)
+  env = control.wrappers.MinimumDuration(env, min_length)
+  env = control.wrappers.MaximumDuration(env, max_length) # acting as barrier
 
   if obs_is_image:
     env = control.wrappers.ObservationDict(env, 'image')
     env = control.wrappers.ObservationToRender(env)
   else:
     env = control.wrappers.ObservationDict(env, 'state')
-  env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
+  env = control.wrappers.PixelObservationsAsGrayscale(env, (64, 64), np.uint8, 'image')
   env = control.wrappers.ConvertTo32Bit(env)
   return env
 
