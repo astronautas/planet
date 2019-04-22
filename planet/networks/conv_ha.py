@@ -25,7 +25,7 @@ from planet import tools
 
 def encoder(obs):
   """Extract deterministic features from an observation."""
-  kwargs = dict(strides=2, activation=tf.nn.relu)
+  kwargs = dict(strides=2, activation=tf.nn.elu)
   hidden = tf.reshape(obs['image'], [-1] + obs['image'].shape[2:].as_list())
 
   hidden = tf.layers.conv2d(hidden, 32, 4, **kwargs)
@@ -42,13 +42,13 @@ def encoder(obs):
 
 def decoder(state, data_shape):
   """Compute the data distribution of an observation from its state."""
-  kwargs = dict(strides=2, activation=tf.nn.relu)
+  kwargs = dict(strides=2, activation=tf.nn.elu)
   hidden = tf.layers.dense(state, 1024, None)
   hidden = tf.reshape(hidden, [-1, 1, 1, hidden.shape[-1].value])
   hidden = tf.layers.conv2d_transpose(hidden, 128, 5, **kwargs)
   hidden = tf.layers.conv2d_transpose(hidden, 64, 5, **kwargs)
   hidden = tf.layers.conv2d_transpose(hidden, 32, 6, **kwargs)
-  hidden = tf.layers.conv2d_transpose(hidden, 1, 6, strides=2) # THIS should be 3, 6
+  hidden = tf.layers.conv2d_transpose(hidden, 3, 6, strides=2) # THIS should be 3, 6
   # hidden = tf.layers.conv2d_transpose(hidden, 1, 6, strides=2) # THIS should be 3, 6
   mean = hidden
 

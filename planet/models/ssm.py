@@ -47,7 +47,7 @@ class SSM(base.Base):
     super(SSM, self).__init__(
         tf.make_template('transition', self._transition),
         tf.make_template('posterior', self._posterior))
-    self._kwargs = dict(units=self._embed_size, activation=tf.nn.relu)
+    self._kwargs = dict(units=self._embed_size, activation=tf.nn.elu)
 
   @property
   def state_size(self):

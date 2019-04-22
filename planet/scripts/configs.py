@@ -117,7 +117,7 @@ def _model_components(config, params):
         params.get('min_stddev', 1e-1))
   elif model == 'rssm':
     config.cell = functools.partial(
-        models.RSSM, state_size, size, size, params.mean_only,
+        models.RSSM, state_size, size, size, True, params.mean_only, # setting futureRnn to true
         params.get('min_stddev', 1e-1))
   else:
     raise NotImplementedError("Unknown model '{}.".format(params.model))
@@ -151,13 +151,13 @@ def _tasks(config, params):
 
 
 def _loss_functions(config, params):
-  config.free_nats = params.get('free_nats', 2.0)
+  config.free_nats = params.get('free_nats', 6.0)
   config.stop_os_posterior_gradient = True
   config.zero_step_losses.image = params.get('image_loss_scale', 1.0)
   config.zero_step_losses.divergence = params.get('divergence_scale', 1.0)
-  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 0.1)
-  config.zero_step_losses.reward = params.get('reward_scale', 10.0)
-  config.overshooting = params.get('overshooting', config.batch_shape[1] - 1)
+  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 0.0)
+  config.zero_step_losses.reward = params.get('reward_scale', 1.0)
+  config.overshooting = params.get('overshooting', 0.0)
   config.overshooting_losses = config.zero_step_losses.copy(_unlocked=True)
   config.overshooting_losses.reward = params.get(
       'overshooting_reward_scale', 100.0)
