@@ -43,6 +43,8 @@ from planet.tools import nested
 import matplotlib.pyplot as plt
 import skimage.color
 
+import math
+
 class ObservationDict(object):
 
   def __init__(self, env, key='observ'):
@@ -387,6 +389,27 @@ class AtariDoneAfterLosingALife(object):
   def reset(self):
     self.last_lives = None
     return self._env.reset()
+
+class DiscreteToBoxWrapperSingleAction(object):
+  @property
+  def action_space(self):
+    lowa = np.array([-1.0])
+    higha = np.array([1.0])
+
+    return Box(lowa, higha)
+
+  def __init__(self, env):
+    self._env = env
+    self.mapper = interp1d([-1.0, 1.0], [0.0, self._env.action_space.n - 0.0001])
+  
+  def __getattr__(self, name):
+    return getattr(self._env, name)
+    
+  def step(self, action):
+    action = math.floor(self.mapper(action[0]))
+    obs, reward, done, info = self._env.step(action)
+
+    return obs, reward, done, info
 
 class DiscreteToBoxWrapper(object):
   @property
