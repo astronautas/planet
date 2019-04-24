@@ -43,9 +43,9 @@ def simulate(
         agent_config=agent_config,
         isolate_envs=isolate_envs)
     
-    return_ = tf.Print(return_, [return_], "Mean items")
+    # return_ = tf.Print(return_, [return_], "Mean items")
     return_mean = tf.reduce_mean(return_)
-    return_mean = tf.Print(return_mean, [return_mean], "Ret mean")
+    # return_mean = tf.Print(return_mean, [return_mean], "Ret mean")
     
     summaries.append(tf.summary.scalar('return', return_mean))
 

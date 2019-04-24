@@ -146,6 +146,15 @@ def gym_breakout(config, params):
       'BreakoutNoFrameskip-v4', obs_is_image=True)
   return Task('gym_breakout', env_ctor, max_length, state_components)
 
+def gym_pong(config, params):
+  action_repeat = params.get('action_repeat', 4)
+  max_length = 150
+  state_components = ['reward']
+  env_ctor = functools.partial(
+      _gym_atari, action_repeat, config.batch_shape[1], max_length,
+      'PongNoFrameskip-v4', obs_is_image=True)
+  return Task('gym_pong', env_ctor, max_length, state_components)
+
 def _dm_control_env(action_repeat, max_length, domain, task):
   from dm_control import suite
 
@@ -162,10 +171,10 @@ def _gym_atari(action_repeat, min_length, max_length, name, obs_is_image=False):
 
   env = gym.make(name)
 
+  env = control.wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False, max_and_skip=True, log_episode_return=True)
+
   env = control.wrappers.DiscreteToBoxWrapper(env)
-  env = control.wrappers.ActionRepeat(env, action_repeat)
-  env = control.wrappers.AtariDoneOutOfLives(env)
-  env = control.wrappers.AtariDoneAfterLosingALife(env)
+  # env = control.wrappers.ActionRepeat(env, action_repeat)
   env = control.wrappers.MinimumDuration(env, min_length)
   env = control.wrappers.MaximumDuration(env, max_length) # acting as barrier
 
@@ -174,7 +183,8 @@ def _gym_atari(action_repeat, min_length, max_length, name, obs_is_image=False):
     env = control.wrappers.ObservationToRender(env)
   else:
     env = control.wrappers.ObservationDict(env, 'state')
-  env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
+
+  env = control.wrappers.PixelObservationsAsGrayscale(env, (64, 64), np.uint8, 'image')
   env = control.wrappers.ConvertTo32Bit(env)
   return env
 

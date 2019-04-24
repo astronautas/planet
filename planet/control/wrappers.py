@@ -180,9 +180,8 @@ class PixelObservationsAsGrayscale(object):
     # Convert to grayscale
     image = skimage.color.rgb2gray(image)
 
-    # Add the third channel, hack, make it one channel because conv layers expect 3
+    # Add the third channel, hack, make it one channel because conv layers expect 1
     image = np.expand_dims(image, axis=2)
-    # image = np.stack((image,)*3, axis=-1)
 
     if image.shape[:2] != self._size:
       kwargs = dict(output_shape=self._size, mode='edge', order=1, preserve_range=True)
@@ -428,7 +427,6 @@ class DiscreteToBoxWrapper(object):
   def step(self, action):
     action = np.argmax(action)
     obs, reward, done, info = self._env.step(action)
-
     return obs, reward, done, info
 
 class DeepMindWrapper(object):
@@ -704,7 +702,6 @@ class ConvertTo32Bit(object):
     if not np.isfinite(reward).all():
       raise ValueError('Infinite reward encountered.')
     return np.array(reward, dtype=np.float32)
-
 
 class Async(object):
   """Step environment in a separate process for lock free paralellism."""

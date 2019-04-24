@@ -22,19 +22,21 @@ from tensorflow_probability import distributions as tfd
 
 from planet import tools
 
+LATENT_SIZE = 1024
+IMAGE_SIZE = [64, 64, 1]
 
 def encoder(obs):
   """Extract deterministic features from an observation."""
-  kwargs = dict(strides=2, activation=tf.nn.elu)
+  kwargs = dict(strides=2, activation=tf.nn.relu)
+  
   hidden = tf.reshape(obs['image'], [-1] + obs['image'].shape[2:].as_list())
-
   hidden = tf.layers.conv2d(hidden, 32, 4, **kwargs)
   hidden = tf.layers.conv2d(hidden, 64, 4, **kwargs)
   hidden = tf.layers.conv2d(hidden, 128, 4, **kwargs)
   hidden = tf.layers.conv2d(hidden, 256, 4, **kwargs)
   hidden = tf.layers.flatten(hidden)
 
-  assert hidden.shape[1:].as_list() == [1024], hidden.shape.as_list()
+  assert hidden.shape[1:].as_list() == [LATENT_SIZE], hidden.shape.as_list()
   hidden = tf.reshape(hidden, tools.shape(obs['image'])[:2] + [
       np.prod(hidden.shape[1:].as_list())])
   return hidden
@@ -42,18 +44,17 @@ def encoder(obs):
 
 def decoder(state, data_shape):
   """Compute the data distribution of an observation from its state."""
-  kwargs = dict(strides=2, activation=tf.nn.elu)
-  hidden = tf.layers.dense(state, 1024, None)
+  kwargs = dict(strides=2, activation=tf.nn.relu)
+  hidden = tf.layers.dense(state, LATENT_SIZE, None)
+
   hidden = tf.reshape(hidden, [-1, 1, 1, hidden.shape[-1].value])
   hidden = tf.layers.conv2d_transpose(hidden, 128, 5, **kwargs)
   hidden = tf.layers.conv2d_transpose(hidden, 64, 5, **kwargs)
   hidden = tf.layers.conv2d_transpose(hidden, 32, 6, **kwargs)
-  hidden = tf.layers.conv2d_transpose(hidden, 3, 6, strides=2) # THIS should be 3, 6
-  # hidden = tf.layers.conv2d_transpose(hidden, 1, 6, strides=2) # THIS should be 3, 6
+  hidden = tf.layers.conv2d_transpose(hidden, 1, 6, strides=2)
+
   mean = hidden
-
-  # assert mean.shape[1:].as_list() == [64, 64, 3], mean.shape # TODO - this is a hack for atari
-
+  assert mean.shape[1:].as_list() == IMAGE_SIZE, mean.shape
   mean = tf.reshape(mean, tools.shape(state)[:-1] + data_shape)
   dist = tools.MSEDistribution(mean)
   dist = tfd.Independent(dist, len(data_shape))

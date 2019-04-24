@@ -146,7 +146,7 @@ def image_summaries(dist, target, name='image', max_batch=10):
     s = shapelib.shape(frames)
     frames = tf.reshape(frames, [s[0], s[1], s[2] * s[3], s[4]])
     summaries.append(gif_summary.gif_summary(
-        'animation', frames[None], max_outputs=1, fps=20))
+        'animation', frames[None], max_outputs=1, fps=15))
   return summaries
 
 

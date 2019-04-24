@@ -41,7 +41,7 @@ def default(config, params):
 
 def default_smaller(config, params):
   with params.unlocked:
-    params.batch_shape = [24, 50]
+    params.batch_shape = [27, 45]
     params.train_steps = 20000
     params.test_steps = 1000
     params.collect_every = 5000
@@ -74,12 +74,11 @@ def atari(config, params):
 
 def debug(config, params):
   with params.unlocked:
-    params.collect_every = 20
     params.batch_shape = [40, 10]
-    params.train_steps = 50
-    params.test_steps = 10
+    params.train_steps = 60
+    params.test_steps = 50
     params.max_steps = 100 * (30 * 30)
-    params.collect_every = 10
+    params.collect_every = 50
     params.num_seed_episodes = 2
   config = default(config, params)
   config.debug = True
@@ -129,7 +128,7 @@ def _tasks(config, params):
   if tasks == 'all':
     tasks = [
         'cartpole_balance', 'cartpole_swingup', 'finger_spin', 'cheetah_run',
-        'cup_catch', 'walker_walk', 'vizdoom_basic', 'gym_cheetah', 'gym_breakout', 'gym_seaquest']
+        'cup_catch', 'walker_walk', 'vizdoom_basic', 'gym_cheetah', 'gym_breakout', 'gym_seaquest', 'gym_pong']
   tasks = [getattr(tasks_lib, name)(config, params) for name in tasks]
   config.isolate_envs = params.get('isolate_envs', 'thread')
   def common_spaces_ctor(task, action_spaces):
@@ -151,13 +150,13 @@ def _tasks(config, params):
 
 
 def _loss_functions(config, params):
-  config.free_nats = params.get('free_nats', 6.0)
+  config.free_nats = params.get('free_nats', 3.0)
   config.stop_os_posterior_gradient = True
   config.zero_step_losses.image = params.get('image_loss_scale', 1.0)
-  config.zero_step_losses.divergence = params.get('divergence_scale', 1.0)
-  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 0.0)
-  config.zero_step_losses.reward = params.get('reward_scale', 1.0)
-  config.overshooting = params.get('overshooting', 0.0)
+  config.zero_step_losses.divergence = params.get('divergence_scale', 0.8)
+  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 0.1)
+  config.zero_step_losses.reward = params.get('reward_scale', 10.0)
+  config.overshooting = params.get('overshooting', config.batch_shape[1] - 1)
   config.overshooting_losses = config.zero_step_losses.copy(_unlocked=True)
   config.overshooting_losses.reward = params.get(
       'overshooting_reward_scale', 100.0)

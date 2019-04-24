@@ -23,3 +23,5 @@ from .in_graph_batch_env import InGraphBatchEnv
 from .mpc_agent import MPCAgent
 from .random_episodes import random_episodes
 from .simulate import simulate
+from .atari_wrappers import wrap_deepmind
+from .vizdoom_wrappers import wrap_vizdoom
