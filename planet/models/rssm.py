@@ -52,7 +52,7 @@ class RSSM(base.Base):
     self._embed_size = embed_size
     self._future_rnn = future_rnn
     self._cell = tf.contrib.rnn.GRUBlockCell(self._belief_size)
-    self._kwargs = dict(units=self._embed_size, activation=tf.nn.elu)
+    self._kwargs = dict(units=self._embed_size, activation=tf.nn.relu)
     self._mean_only = mean_only
     self._min_stddev = min_stddev
     super(RSSM, self).__init__(

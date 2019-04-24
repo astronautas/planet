@@ -30,7 +30,7 @@ def feed_forward(
   if cut_gradient:
     hidden = tf.stop_gradient(hidden)
   for _ in range(num_layers):
-    hidden = tf.layers.dense(hidden, 100, tf.nn.elu)
+    hidden = tf.layers.dense(hidden, 100, tf.nn.relu)
   mean = tf.layers.dense(hidden, int(np.prod(data_shape)), activation)
   mean = tf.reshape(mean, tools.shape(state)[:-1] + data_shape)
   dist = tfd.Normal(mean, 1.0)
