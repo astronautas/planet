@@ -41,7 +41,7 @@ def default(config, params):
 
 def default_smaller(config, params):
   with params.unlocked:
-    params.batch_shape = [27, 45]
+    params.batch_shape = [25, 49]
     params.train_steps = 20000
     params.test_steps = 1000
     params.collect_every = 5000
@@ -74,11 +74,11 @@ def atari(config, params):
 
 def debug(config, params):
   with params.unlocked:
-    params.batch_shape = [40, 10]
-    params.train_steps = 60
+    params.batch_shape = [25, 40]
+    params.train_steps = 40
     params.test_steps = 50
     params.max_steps = 100 * (30 * 30)
-    params.collect_every = 50
+    params.collect_every = 18
     params.num_seed_episodes = 2
   config = default(config, params)
   config.debug = True
@@ -128,7 +128,7 @@ def _tasks(config, params):
   if tasks == 'all':
     tasks = [
         'cartpole_balance', 'cartpole_swingup', 'finger_spin', 'cheetah_run',
-        'cup_catch', 'walker_walk', 'vizdoom_basic', 'gym_cheetah', 'gym_breakout', 'gym_seaquest', 'gym_pong']
+        'cup_catch', 'walker_walk', 'vizdoom_basic', 'gym_cheetah', 'gym_breakout', 'gym_seaquest', 'gym_pong', 'gym_vizdoom_takecover']
   tasks = [getattr(tasks_lib, name)(config, params) for name in tasks]
   config.isolate_envs = params.get('isolate_envs', 'thread')
   def common_spaces_ctor(task, action_spaces):

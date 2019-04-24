@@ -151,8 +151,8 @@ def gym_pong(config, params):
   return Task('gym_pong', env_ctor, max_length, state_components)
 
 def gym_vizdoom_takecover(config, params):
-  action_repeat = params.get('action_repeat', 3)
-  max_length = 960 // action_repeat
+  action_repeat = params.get('action_repeat', 4)
+  max_length = 80
   min_length = config.batch_shape[1]
   state_components = ['reward']
   env_ctor = functools.partial(_gym_vizdoom, action_repeat, min_length, max_length, 'VizdoomTakeCover-v0', True)
@@ -175,8 +175,8 @@ def _gym_vizdoom(action_repeat, min_length, max_length, name, obs_is_image=False
 
   env = gym.make(name)
 
-  timestamp = datetime.datetime.now().strftime("%I:%M_%b %d, %Y")
-  env = control.wrap_vizdoom(env, episode_logging_file="~/workspace/planet_runs/vizdoom/episodes_info_" + timestamp + ".csv")
+  timestamp = datetime.datetime.now().strftime("%I_%M_%b_%d_%Y")
+  env = control.wrap_vizdoom(env, episode_logging_file="/home/lukas/workspace/planet_runs/vizdoom/episodes_info_" + timestamp + ".csv")
 
   env = control.wrappers.DiscreteToBoxWrapper(env)
   env = control.wrappers.MinimumDuration(env, min_length)

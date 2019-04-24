@@ -71,7 +71,7 @@ class EpisodicLifeEnv(gym.Wrapper):
 
         self.episode_reward = 0.0
         self.timestep = 0
-        self.episode = 0.0
+        self.episode = 0
 
         self.episode_logging_file = episode_logging_file
 

@@ -23,7 +23,7 @@ from tensorflow_probability import distributions as tfd
 from planet import tools
 
 LATENT_SIZE = 1024
-IMAGE_SIZE = [64, 64, 1]
+IMAGE_SIZE = [64, 64, 3]
 
 def encoder(obs):
   """Extract deterministic features from an observation."""
@@ -51,7 +51,7 @@ def decoder(state, data_shape):
   hidden = tf.layers.conv2d_transpose(hidden, 128, 5, **kwargs)
   hidden = tf.layers.conv2d_transpose(hidden, 64, 5, **kwargs)
   hidden = tf.layers.conv2d_transpose(hidden, 32, 6, **kwargs)
-  hidden = tf.layers.conv2d_transpose(hidden, 1, 6, strides=2)
+  hidden = tf.layers.conv2d_transpose(hidden, 3, 6, strides=2)
 
   mean = hidden
   assert mean.shape[1:].as_list() == IMAGE_SIZE, mean.shape
