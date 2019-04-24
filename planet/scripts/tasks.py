@@ -150,6 +150,15 @@ def gym_pong(config, params):
       'PongNoFrameskip-v4', obs_is_image=True)
   return Task('gym_pong', env_ctor, max_length, state_components)
 
+def gym_vizdoom_takecover(config, params):
+  action_repeat = params.get('action_repeat', 3)
+  max_length = 960 // action_repeat
+  min_length = config.batch_shape[1]
+  state_components = ['reward']
+  env_ctor = functools.partial(_gym_vizdoom, action_repeat, min_length, max_length, 'VizdoomTakeCover-v0', True)
+
+  return Task('gym_vizdoom_takecover', env_ctor, max_length, state_components)
+
 def _dm_control_env(action_repeat, max_length, domain, task):
   from dm_control import suite
 
@@ -237,29 +246,4 @@ def _gym_atari(action_repeat, min_length, max_length, name, obs_is_image=False):
 #     env = control.wrappers.ObservationDict(env, 'state')
 #   env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
 #   env = control.wrappers.ConvertTo32Bit(env)
-#   return env
-
-# VizDoom tasks
-def vizdoom_basic(config, params):
-  action_repeat = params.get('action_repeat', 3)
-  max_length = 960 // action_repeat
-  # max_length = 400 // action_repeat
-  min_length = config.batch_shape[1]
-  state_components = ['reward']
-  env_ctor = functools.partial(_gym_env_discrete, action_repeat, min_length, max_length, 'VizdoomBasic-v0', True)
-
-  return Task('vizdoom_basic', env_ctor, max_length, state_components)
-
-# def _vizdoom_env(action_repeat, max_length, env_name):
-#   import gym
-
-#   def env_ctor():
-#     env = control.wrappers.VizDoomWrapper(gym.make(env_name))
-#     env = control.wrappers.ActionRepeat(env, action_repeat)
-#     # env = control.wrappers.LimitDuration(env, max_length)
-#     env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
-#     env = control.wrappers.ConvertTo32Bit(env)
-#     return env
-
-#   env = control.wrappers.ExternalProcess(env_ctor)
 #   return env
