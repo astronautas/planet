@@ -4,6 +4,8 @@ from collections import deque
 import gym
 from gym import spaces
 import cv2
+import csv
+
 # cv2.ocl.setUseOpenCL(False)
 
 class NoopResetEnv(gym.Wrapper):
@@ -59,15 +61,19 @@ class FireResetEnv(gym.Wrapper):
         return self.env.step(ac)
 
 class EpisodicLifeEnv(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, episode_logging_file=None):
         """Make end-of-life == end-of-episode, but only reset on true game over.
         Done by DeepMind for the DQN and co. since it helps value estimation.
         """
         gym.Wrapper.__init__(self, env)
         self.lives = 0
         self.was_real_done  = True
+
         self.episode_reward = 0.0
         self.timestep = 0
+        self.episode = 0.0
+
+        self.episode_logging_file = episode_logging_file
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
@@ -82,8 +88,9 @@ class EpisodicLifeEnv(gym.Wrapper):
             done = True
         self.lives = lives
 
-        self.episode_reward += reward
-        self.timestep += 1
+        if not(self.episode_logging_file is None):
+            self.episode_reward += reward
+            self.timestep += 1
 
         return obs, reward, done, info
 
@@ -93,11 +100,14 @@ class EpisodicLifeEnv(gym.Wrapper):
         and the learner need not know about any of this behind-the-scenes.
         """
         if self.was_real_done:
-            print("Episode score (reward): ", self.episode_reward)
-            print("at timestep: ", self.timestep)
+            if not(self.episode_logging_file is None):
+                with open(self.episode_logging_file, 'a+') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([self.timestep, self.episode, self.episode_reward])
 
             obs = self.env.reset(**kwargs)
             self.episode_reward = 0.0
+            self.episode += 1
         else:
             # no-op step to advance from terminal/lost life state
             obs, _, _, _ = self.env.step(0)

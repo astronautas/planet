@@ -19,23 +19,18 @@ from __future__ import print_function
 import collections
 import functools
 import os
-
 import numpy as np
-
 from planet import control
 from planet import networks
 from planet import tools
-
 import skimage.transform
 import tensorflow as tf
 from scipy.interpolate import interp1d
-
 from planet.tools import nested
 import cv2
 from gym.spaces import MultiDiscrete, Box
-
+import datetime
 import math
-
 from gym_vizdoom import (LIST_OF_ENVS, EXPLORATION_GOAL_FRAME, GOAL_REACHING_REWARD)
 import vizdoomgym
 
@@ -166,6 +161,29 @@ def _dm_control_env(action_repeat, max_length, domain, task):
 
   return env
 
+def _gym_vizdoom(action_repeat, min_length, max_length, name, obs_is_image=False):
+  import gym
+
+  env = gym.make(name)
+
+  timestamp = datetime.datetime.now().strftime("%I:%M_%b %d, %Y")
+  env = control.wrap_vizdoom(env, episode_logging_file="~/workspace/planet_runs/vizdoom/episodes_info_" + timestamp + ".csv")
+
+  env = control.wrappers.DiscreteToBoxWrapper(env)
+  env = control.wrappers.MinimumDuration(env, min_length)
+  env = control.wrappers.MaximumDuration(env, max_length) # acting as barrier
+
+  if obs_is_image:
+    env = control.wrappers.ObservationDict(env, 'image')
+    env = control.wrappers.ObservationToRender(env)
+  else:
+    env = control.wrappers.ObservationDict(env, 'state')
+
+  env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
+  env = control.wrappers.ConvertTo32Bit(env)
+  
+  return env
+
 def _gym_atari(action_repeat, min_length, max_length, name, obs_is_image=False):
   import gym
 
@@ -174,7 +192,6 @@ def _gym_atari(action_repeat, min_length, max_length, name, obs_is_image=False):
   env = control.wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False, max_and_skip=True, log_episode_return=True)
 
   env = control.wrappers.DiscreteToBoxWrapper(env)
-  # env = control.wrappers.ActionRepeat(env, action_repeat)
   env = control.wrappers.MinimumDuration(env, min_length)
   env = control.wrappers.MaximumDuration(env, max_length) # acting as barrier
 
@@ -186,40 +203,41 @@ def _gym_atari(action_repeat, min_length, max_length, name, obs_is_image=False):
 
   env = control.wrappers.PixelObservationsAsGrayscale(env, (64, 64), np.uint8, 'image')
   env = control.wrappers.ConvertTo32Bit(env)
+
   return env
 
-def _gym_env(action_repeat, min_length, max_length, name, obs_is_image=False):
-  import gym
-  env = gym.make(name)
-  env = control.wrappers.ActionRepeat(env, action_repeat)
-  env = control.wrappers.NormalizeActions(env)
-  env = control.wrappers.MinimumDuration(env, min_length)
-  env = control.wrappers.MaximumDuration(env, max_length)
-  if obs_is_image:
-    env = control.wrappers.ObservationDict(env, 'image')
-    env = control.wrappers.ObservationToRender(env)
-  else:
-    env = control.wrappers.ObservationDict(env, 'state')
-  env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
-  env = control.wrappers.ConvertTo32Bit(env)
-  return env
+# def _gym_env(action_repeat, min_length, max_length, name, obs_is_image=False):
+#   import gym
+#   env = gym.make(name)
+#   env = control.wrappers.ActionRepeat(env, action_repeat)
+#   env = control.wrappers.NormalizeActions(env)
+#   env = control.wrappers.MinimumDuration(env, min_length)
+#   env = control.wrappers.MaximumDuration(env, max_length)
+#   if obs_is_image:
+#     env = control.wrappers.ObservationDict(env, 'image')
+#     env = control.wrappers.ObservationToRender(env)
+#   else:
+#     env = control.wrappers.ObservationDict(env, 'state')
+#   env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
+#   env = control.wrappers.ConvertTo32Bit(env)
+#   return env
 
-def _gym_env_discrete(action_repeat, min_length, max_length, name, obs_is_image=False):
-  import gym
-  env = gym.make(name)
-  env = control.wrappers.ActionRepeat(env, action_repeat)
-  env = control.wrappers.NormalizeActions(env)
-  env = control.wrappers.MinimumDuration(env, min_length)
-  env = control.wrappers.MaximumDuration(env, max_length)
+# def _gym_env_discrete(action_repeat, min_length, max_length, name, obs_is_image=False):
+#   import gym
+#   env = gym.make(name)
+#   env = control.wrappers.ActionRepeat(env, action_repeat)
+#   env = control.wrappers.NormalizeActions(env)
+#   env = control.wrappers.MinimumDuration(env, min_length)
+#   env = control.wrappers.MaximumDuration(env, max_length)
 
-  if obs_is_image:
-    env = control.wrappers.ObservationDict(env, 'image')
-    env = control.wrappers.ObservationToRender(env)
-  else:
-    env = control.wrappers.ObservationDict(env, 'state')
-  env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
-  env = control.wrappers.ConvertTo32Bit(env)
-  return env
+#   if obs_is_image:
+#     env = control.wrappers.ObservationDict(env, 'image')
+#     env = control.wrappers.ObservationToRender(env)
+#   else:
+#     env = control.wrappers.ObservationDict(env, 'state')
+#   env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
+#   env = control.wrappers.ConvertTo32Bit(env)
+#   return env
 
 # VizDoom tasks
 def vizdoom_basic(config, params):
