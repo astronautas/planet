@@ -152,7 +152,7 @@ def gym_pong(config, params):
 
 def gym_vizdoom_takecover(config, params):
   action_repeat = params.get('action_repeat', 4)
-  max_length = 80
+  max_length = 250
   min_length = config.batch_shape[1]
   state_components = ['reward']
   env_ctor = functools.partial(_gym_vizdoom, action_repeat, min_length, max_length, 'VizdoomTakeCover-v0', True)

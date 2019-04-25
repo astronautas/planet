@@ -41,7 +41,7 @@ def default(config, params):
 
 def default_smaller(config, params):
   with params.unlocked:
-    params.batch_shape = [25, 49]
+    params.batch_shape = [24, 50]
     params.train_steps = 20000
     params.test_steps = 1000
     params.collect_every = 5000
@@ -150,11 +150,11 @@ def _tasks(config, params):
 
 
 def _loss_functions(config, params):
-  config.free_nats = params.get('free_nats', 3.0)
+  config.free_nats = params.get('free_nats', 2.0)
   config.stop_os_posterior_gradient = True
   config.zero_step_losses.image = params.get('image_loss_scale', 1.0)
-  config.zero_step_losses.divergence = params.get('divergence_scale', 0.8)
-  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 0.1)
+  config.zero_step_losses.divergence = params.get('divergence_scale', 1.648e-03)
+  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 4.118e-05)
   config.zero_step_losses.reward = params.get('reward_scale', 10.0)
   config.overshooting = params.get('overshooting', config.batch_shape[1] - 1)
   config.overshooting_losses = config.zero_step_losses.copy(_unlocked=True)

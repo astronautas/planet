@@ -57,6 +57,7 @@ class EpisodicLifeEnv(object):
         self.was_real_done  = True
 
         self.episode_reward = 0.0
+        self.episode_reward_exp_avg = 0.0
         self.timestep = 0
         self.episode = 0
 
@@ -76,8 +77,7 @@ class EpisodicLifeEnv(object):
         if not(self.episode_logging_file is None):
             self.episode_reward += reward
             self.timestep += 1
-            self.episode += 1
-
+            
         return obs, reward, done, info
 
     def reset(self, **kwargs):
@@ -92,32 +92,32 @@ class EpisodicLifeEnv(object):
         # print(self._env.state().__dir__)
         # print(self.game)
 
-        if not(self._env.lives() is None):
-            if self.was_real_done:
-                print("Ending episode: ", str(self.timestep) + " " + str(self.episode) + " " + str(self.episode_reward))
-                if not(self.episode_logging_file is None):
-                    if os.path.isfile(self.episode_logging_file):
-                        with open(self.episode_logging_file, 'a+') as f:
-                            writer = csv.writer(f)
-                            writer.writerow([self.timestep, self.episode, self.episode_reward])
-                    else:
-                        with open(self.episode_logging_file, 'w') as f:
-                            writer = csv.writer(f)
-                            writer.writerow([self.timestep, self.episode, self.episode_reward])
+        if self.was_real_done:
+            self.episode_reward_exp_avg = self.episode_reward * 0.7 + self.episode_reward_exp_avg * 0.3
+            print("Ending episode: ", str(self.timestep) + " " + str(self.episode) + " " + str(self.episode_reward) + " " + str(self.episode_reward_exp_avg))
 
-                obs = self._env.reset(**kwargs)
+            if not(self.episode_logging_file is None):
+                if os.path.isfile(self.episode_logging_file):
+                    with open(self.episode_logging_file, 'a+') as f:
+                        writer = csv.writer(f)
+                        writer.writerow([self.timestep, self.episode, self.episode_reward_exp_avg])
+                else:
+                    with open(self.episode_logging_file, 'w') as f:
+                        writer = csv.writer(f)
+                        writer.writerow([self.timestep, self.episode, self.episode_reward_exp_avg])
 
-                self.episode_reward = 0.0
-                self.episode += 1
-            else:
-                print("Fake reset: ", self._env.lives())
-                # no-op step to advance from terminal/lost life state
-                obs, _, _, _ = self._env.step(VIZDOOM_NOOP_ACTION)
+            obs = self._env.reset(**kwargs)
 
-            self.lives = self._env.lives()
-            return obs
+            self.episode_reward = 0.0
+            self.episode += 1
         else:
-            return self._env.reset(**kwargs)
+            print("Fake reset: ", self._env.lives())
+            # no-op step to advance from terminal/lost life state
+            obs, _, _, _ = self._env.step(VIZDOOM_NOOP_ACTION)
+
+        if not(self._env.lives() is None): self.lives = self._env.lives()
+
+        return obs
 
 class ExtractGameState(object):
     def __init__(self, env):
