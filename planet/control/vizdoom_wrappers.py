@@ -2,6 +2,7 @@
 import numpy as np
 import csv
 import os
+import imageio
 
 VIZDOOM_NOOP_ACTION = None
 
@@ -63,6 +64,10 @@ class EpisodicLifeEnv(object):
 
         self.episode_logging_file = episode_logging_file
 
+        self.record_video_every = 20
+        self.recording = False
+        self.obs_buffer = []
+
     def step(self, action):
         obs, reward, done, info = self._env.step(action)
         self.was_real_done = done
@@ -77,23 +82,21 @@ class EpisodicLifeEnv(object):
         if not(self.episode_logging_file is None):
             self.episode_reward += reward
             self.timestep += 1
+
+        if self.recording and not(self._env.state() is None):
+            buff = np.transpose(self._env.state().screen_buffer, [1, 2, 0])
+            self.obs_buffer.append(buff)
             
         return obs, reward, done, info
 
     def reset(self, **kwargs):
-        # print("Called reset")
-
         """Reset only when lives are exhausted.
         This way all states are still reachable even though lives are episodic,
         and the learner need not know about any of this behind-the-scenes.
         """
 
-        # print(self._env.lives())
-        # print(self._env.state().__dir__)
-        # print(self.game)
-
         if self.was_real_done:
-            self.episode_reward_exp_avg = self.episode_reward * 0.7 + self.episode_reward_exp_avg * 0.3
+            self.episode_reward_exp_avg = self.episode_reward * 0.7 + self.episode_reward_exp_avg * 0.3 # should be opposite
             print("Ending episode: ", str(self.timestep) + " " + str(self.episode) + " " + str(self.episode_reward) + " " + str(self.episode_reward_exp_avg))
 
             if not(self.episode_logging_file is None):
@@ -108,6 +111,15 @@ class EpisodicLifeEnv(object):
 
             obs = self._env.reset(**kwargs)
 
+            self.recording = False
+            
+            # Record observations into a movie
+            if self.episode % 20 == 0:
+                self.recording = True
+            
+            self.record_video()
+            self.obs_buffer = []
+
             self.episode_reward = 0.0
             self.episode += 1
         else:
@@ -118,6 +130,10 @@ class EpisodicLifeEnv(object):
         if not(self._env.lives() is None): self.lives = self._env.lives()
 
         return obs
+    
+    def record_video(self):
+        if len(self.obs_buffer):
+            imageio.mimwrite('/tmp/vizdoom_output.mp4', self.obs_buffer, fps=20.0)
 
 class ExtractGameState(object):
     def __init__(self, env):
