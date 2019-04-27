@@ -176,7 +176,7 @@ def _gym_vizdoom(action_repeat, min_length, max_length, name, obs_is_image=False
   env = gym.make(name)
 
   timestamp = datetime.datetime.now().strftime("%I_%M_%b_%d_%Y")
-  env = control.wrap_vizdoom(env, episode_logging_file="/home/lukas/workspace/planet_runs/vizdoom/episodes_info_" + timestamp + ".csv")
+  env = control.wrap_vizdoom(env, episode_logging_file="/home/lukas/workspace/planet_runs/vizdoom_2/episodes_info_" + timestamp + ".csv")
 
   env = control.wrappers.DiscreteToBoxWrapper(env)
   env = control.wrappers.MinimumDuration(env, min_length)

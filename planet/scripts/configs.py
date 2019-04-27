@@ -49,6 +49,16 @@ def default_smaller(config, params):
   config = default(config, params)
   return config
 
+def reduced_overshooting(config, params):
+  with params.unlocked:
+    params.batch_shape = [50, 12]
+    params.train_steps = 20000
+    params.test_steps = 1000
+    params.collect_every = 5000
+
+  config = default(config, params)
+  return config
+
 # Need to change tasks config as well
 def testing(config, params):
   with params.unlocked:
@@ -156,7 +166,7 @@ def _loss_functions(config, params):
   config.zero_step_losses.divergence = params.get('divergence_scale', 1.648e-03)
   config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 4.118e-05)
   config.zero_step_losses.reward = params.get('reward_scale', 10.0)
-  config.overshooting = params.get('overshooting', config.batch_shape[1] - 1)
+  config.overshooting = params.get('overshooting', config.batch_shape[1] - 1) # was config.batch_shape[1] - 1
   config.overshooting_losses = config.zero_step_losses.copy(_unlocked=True)
   config.overshooting_losses.reward = params.get(
       'overshooting_reward_scale', 100.0)

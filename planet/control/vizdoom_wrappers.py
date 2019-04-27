@@ -3,6 +3,7 @@ import numpy as np
 import csv
 import os
 import imageio
+import os
 
 VIZDOOM_NOOP_ACTION = None
 
@@ -83,7 +84,7 @@ class EpisodicLifeEnv(object):
             self.episode_reward += reward
             self.timestep += 1
 
-        if self.recording and not(self._env.state() is None):
+        if not(self._env.state() is None):
             buff = np.transpose(self._env.state().screen_buffer, [1, 2, 0])
             self.obs_buffer.append(buff)
             
@@ -103,23 +104,22 @@ class EpisodicLifeEnv(object):
                 if os.path.isfile(self.episode_logging_file):
                     with open(self.episode_logging_file, 'a+') as f:
                         writer = csv.writer(f)
-                        writer.writerow([self.timestep, self.episode, self.episode_reward_exp_avg])
+                        writer.writerow([self.timestep, self.episode, self.episode_reward])
                 else:
                     with open(self.episode_logging_file, 'w') as f:
                         writer = csv.writer(f)
-                        writer.writerow([self.timestep, self.episode, self.episode_reward_exp_avg])
+                        writer.writerow([self.timestep, self.episode, self.episode_reward])
 
             obs = self._env.reset(**kwargs)
 
             self.recording = False
             
             # Record observations into a movie
-            if self.episode % 20 == 0:
-                self.recording = True
-            
-            self.record_video()
-            self.obs_buffer = []
-
+            if self.episode % 10 == 0:
+                self.record_video()
+            else:
+                self.obs_buffer = []
+        
             self.episode_reward = 0.0
             self.episode += 1
         else:
@@ -132,8 +132,18 @@ class EpisodicLifeEnv(object):
         return obs
     
     def record_video(self):
+        video_path = "/tmp/vizdoom_output.mp4"
+
         if len(self.obs_buffer):
-            imageio.mimwrite('/tmp/vizdoom_output.mp4', self.obs_buffer, fps=20.0)
+            print("------")
+            if os.path.isfile(video_path):
+                print("Removing existing mp4")
+                os.remove(video_path)
+
+            imageio.mimwrite(video_path, self.obs_buffer, fps=20.0)
+            print("Recorded MP4 episode!!!!")
+            print("------")
+            self.obs_buffer = []
 
 class ExtractGameState(object):
     def __init__(self, env):
