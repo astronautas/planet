@@ -160,6 +160,7 @@ def train(model_fn, datasets, logdir, config):
     score, summary = model_fn(data, trainer, config)
     message = 'Graph contains {} trainable variables.'
     tf.logging.info(message.format(tools.count_weights()))
+
     if config.train_steps:
       trainer.add_phase(
           'train', config.train_steps, score, summary,
@@ -167,6 +168,7 @@ def train(model_fn, datasets, logdir, config):
           report_every=None,
           log_every=config.train_log_every,
           checkpoint_every=config.train_checkpoint_every)
+
     if config.test_steps:
       trainer.add_phase(
           'test', config.test_steps, score, summary,
@@ -174,6 +176,15 @@ def train(model_fn, datasets, logdir, config):
           report_every=config.test_steps,
           log_every=config.test_steps,
           checkpoint_every=config.test_checkpoint_every)
+
+    # if config.test_steps:
+    #   trainer.add_phase(
+    #       'evaluate', config.test_steps, score, summary,
+    #       batch_size=config.batch_shape[0],
+    #       report_every=config.test_steps,
+    #       log_every=config.test_steps,
+    #       checkpoint_every=config.test_checkpoint_every)
+
   for saver in config.savers:
     trainer.add_saver(**saver)
   for score in trainer.iterate(config.max_steps):
@@ -227,11 +238,19 @@ def apply_optimizers(loss, step, should_summarize, optimizers):
 
 def simulate_episodes(config, params, graph, expensive_summaries, name):
   def env_ctor():
+
     env = params.task.env_ctor()
+
+    if expensive_summaries:
+      env = control.wrappers.PhaseWrapper(env, "simulate")
+
     if params.save_episode_dir:
       env = control.wrappers.CollectGymDataset(env, params.save_episode_dir)
+
     env = control.wrappers.ConcatObservation(env, ['image'])
+
     return env
+
   cell = graph.cell
   agent_config = tools.AttrDict(
       cell=cell,
@@ -244,10 +263,12 @@ def simulate_episodes(config, params, graph, expensive_summaries, name):
   params = params.copy()
   params.update(agent_config)
   agent_config.update(params)
+
   summary, return_ = control.simulate(
       graph.step, env_ctor, params.task.max_length,
       params.num_agents, agent_config, config.isolate_envs,
       expensive_summaries, name=name)
+
   return summary, return_
 
 

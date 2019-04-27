@@ -68,6 +68,7 @@ class MPCAgent(object):
         embedded.shape[1:].as_list(),
         prev_action.shape[1:].as_list())
     action = action[:, 0]
+    
     if self._config.exploration:
       scale = self._config.exploration.scale
       if self._config.exploration.schedule:

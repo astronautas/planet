@@ -41,7 +41,7 @@ def default(config, params):
 
 def default_smaller(config, params):
   with params.unlocked:
-    params.batch_shape = [24, 50]
+    params.batch_shape = [40, 25]
     params.train_steps = 20000
     params.test_steps = 1000
     params.collect_every = 5000
@@ -88,7 +88,7 @@ def debug(config, params):
     params.train_steps = 40
     params.test_steps = 50
     params.max_steps = 100 * (30 * 30)
-    params.collect_every = 18
+    params.collect_every = 100
     params.num_seed_episodes = 2
   config = default(config, params)
   config.debug = True
@@ -191,6 +191,7 @@ def _training_schedule(config, params):
   config.random_collects = _initial_collection(config, params)
   config.sim_collects = _active_collection(config, params)
   config.sim_summaries = tools.AttrDict(_unlocked=True)
+
   for task in config.tasks:
     for horizon in params.get('summary_horizons', [12]):
       name = 'summary-{}-cem-{}'.format(task.name, horizon)

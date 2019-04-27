@@ -68,8 +68,8 @@ class ObservationDict(object):
     obs = {self._key: np.array(obs)}
     return obs, reward, done, info
 
-  def reset(self):
-    obs = self._env.reset()
+  def reset(self, **kwargs):
+    obs = self._env.reset(**kwargs)
     obs = {self._key: np.array(obs)}
     return obs
 
@@ -101,8 +101,8 @@ class ConcatObservation(object):
     obs = self._select_keys(obs)
     return obs, reward, done, info
 
-  def reset(self):
-    obs = self._env.reset()
+  def reset(self, **kwargs):
+    obs = self._env.reset(**kwargs)
     obs = self._select_keys(obs)
     return obs
 
@@ -228,8 +228,8 @@ class PixelObservations(object):
     obs[self._key] = self._render_image()
     return obs, reward, done, info
 
-  def reset(self):
-    obs = self._env.reset()
+  def reset(self, **kwargs):
+    obs = self._env.reset(**kwargs)
     obs[self._key] = self._render_image()
     return obs
 
@@ -271,14 +271,13 @@ class ObservationToRender(object):
     self._image = obs.pop(self._key)
     return obs, reward, done, info
 
-  def reset(self):
-    obs = self._env.reset()
+  def reset(self, **kwargs):
+    obs = self._env.reset(**kwargs)
     self._image = obs.pop(self._key)
     return obs
 
   def render(self, *args, **kwargs):
     return self._image
-
 
 class OverwriteRender(object):
 
@@ -499,9 +498,9 @@ class MaximumDuration(object):
       self._step = None
     return observ, reward, done, info
 
-  def reset(self):
+  def reset(self, **kwargs):
     self._step = 0
-    return self._env.reset()
+    return self._env.reset(**kwargs)
 
 
 class MinimumDuration(object):
@@ -521,9 +520,9 @@ class MinimumDuration(object):
       done = False
     return observ, reward, done, info
 
-  def reset(self):
+  def reset(self, **kwargs):
     self._step = 0
-    return self._env.reset()
+    return self._env.reset(**kwargs)
 
 
 class ProcessObservation(object):
@@ -684,8 +683,8 @@ class ConvertTo32Bit(object):
     reward = self._convert_reward(reward)
     return observ, reward, done, info
 
-  def reset(self):
-    observ = self._env.reset()
+  def reset(self, **kwargs):
+    observ = self._env.reset(**kwargs)
     observ = nested.map(self._convert_observ, observ)
     return observ
 
@@ -887,3 +886,14 @@ class Async(object):
       print('Error in environment process: {}'.format(stacktrace))
       conn.send((self._EXCEPTION, stacktrace))
     conn.close()
+
+class PhaseWrapper(object):
+  def reset(self, *args, **kwargs):
+    return self._env.reset(phase="simulate")
+
+  def __getattr__(self, name):
+    return getattr(self._env, name)
+
+  def __init__(self, env, phase):
+    self.phase = phase
+    self._env = env

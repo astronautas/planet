@@ -5,6 +5,7 @@ import gym
 from gym import spaces
 import cv2
 import csv
+import imageio
 
 # cv2.ocl.setUseOpenCL(False)
 
@@ -70,8 +71,15 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.was_real_done  = True
 
         self.episode_reward = 0.0
+        self.episode_reward_exp_avg = 0.0
         self.timestep = 0
         self.episode = 0
+
+        self.episode_logging_file = episode_logging_file
+
+        self.record_video_every = 20
+        self.recording = False
+        self.obs_buffer = []
 
         self.episode_logging_file = episode_logging_file
 
@@ -81,6 +89,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         # check current lives, make loss of life terminal,
         # then update lives to handle bonus lives
         lives = self.env.unwrapped.ale.lives()
+
         if lives < self.lives and lives > 0:
             # for Qbert sometimes we stay in lives == 0 condition for a few frames
             # so it's important to keep lives > 0, so that we only reset once
@@ -100,12 +109,29 @@ class EpisodicLifeEnv(gym.Wrapper):
         and the learner need not know about any of this behind-the-scenes.
         """
         if self.was_real_done:
+            self.episode_reward_exp_avg = self.episode_reward * 0.7 + self.episode_reward_exp_avg * 0.3 # should be opposite
+            print("Ending episode: ", str(self.timestep) + " " + str(self.episode) + " " + str(self.episode_reward) + " " + str(self.episode_reward_exp_avg))
+
             if not(self.episode_logging_file is None):
-                with open(self.episode_logging_file, 'a+') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([self.timestep, self.episode, self.episode_reward])
+                if os.path.isfile(self.episode_logging_file):
+                    with open(self.episode_logging_file, 'a+') as f:
+                        writer = csv.writer(f)
+                        writer.writerow([self.timestep, self.episode, self.episode_reward])
+                else:
+                    with open(self.episode_logging_file, 'w') as f:
+                        writer = csv.writer(f)
+                        writer.writerow([self.timestep, self.episode, self.episode_reward])
 
             obs = self.env.reset(**kwargs)
+
+            self.recording = False
+            
+            # Record observations into a movie
+            if self.episode % 5 == 0:
+                self.record_video()
+            else:
+                self.obs_buffer = []
+        
             self.episode_reward = 0.0
             self.episode += 1
         else:
@@ -114,6 +140,20 @@ class EpisodicLifeEnv(gym.Wrapper):
 
         self.lives = self.env.unwrapped.ale.lives()
         return obs
+
+    def record_video(self):
+        video_path = "/tmp/pong_output.mp4"
+
+        if len(self.obs_buffer):
+            print("------")
+            if os.path.isfile(video_path):
+                print("Removing existing mp4")
+                os.remove(video_path)
+
+            imageio.mimwrite(video_path, self.obs_buffer, fps=20.0)
+            print("Recorded MP4 episode!!!!")
+            print("------")
+            self.obs_buffer = []
 
 class LogEpisodeReturn(gym.Wrapper):
     def __init__(self, env, skip=4):
@@ -156,7 +196,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         return max_frame, total_reward, done, info
 
     def reset(self, **kwargs):
-        return self.env.reset(**kwargs)
+        return self.env.reset(*args, **kwargs)
 
 class ClipRewardEnv(gym.RewardWrapper):
     def __init__(self, env):
@@ -268,17 +308,18 @@ def make_atari(env_id, max_episode_steps=None):
         env = TimeLimit(env, max_episode_steps=max_episode_steps)
     return env
 
-def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False, max_and_skip=False, warp_frame=False, log_episode_return=False):
+def wrap_deepmind(env, episode_logging_file, episode_life=True, clip_rewards=True, frame_stack=False, scale=False, max_and_skip=False, 
+                  warp_frame=False, log_episode_return=False):
     """Configure environment for DeepMind-style Atari.
     """
 
-    env = NoopResetEnv(env, noop_max=30) # this forces the reward model to not lose lifes
+    # env = NoopResetEnv(env, noop_max=30) # this forces the reward model to not lose lifes
 
     if episode_life:
-        env = EpisodicLifeEnv(env)
+        env = EpisodicLifeEnv(env, episode_logging_file)
 
-    if 'FIRE' in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
+    # if 'FIRE' in env.unwrapped.get_action_meanings():
+    #     env = FireResetEnv(env)
 
     if warp_frame:
         env = WarpFrame(env)

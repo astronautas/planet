@@ -33,6 +33,7 @@ import datetime
 import math
 from gym_vizdoom import (LIST_OF_ENVS, EXPLORATION_GOAL_FRAME, GOAL_REACHING_REWARD)
 import vizdoomgym
+import datetime
 
 # from gym_vizdoom.logging.navigation_video_writer import NavigationVideoWriter
 
@@ -144,9 +145,10 @@ def gym_breakout(config, params):
 def gym_pong(config, params):
   action_repeat = params.get('action_repeat', 4)
   max_length = 150
+  timestamp = datetime.datetime.now().strftime("%I_%M_%b_%d_%Y")
   state_components = ['reward']
   env_ctor = functools.partial(
-      _gym_atari, action_repeat, config.batch_shape[1], max_length,
+      _gym_atari, action_repeat, "/home/lukas/workspace/planet_runs/pong_2/episodes_info_" + timestamp + ".csv", config.batch_shape[1], max_length,
       'PongNoFrameskip-v4', obs_is_image=True)
   return Task('gym_pong', env_ctor, max_length, state_components)
 
@@ -193,12 +195,12 @@ def _gym_vizdoom(action_repeat, min_length, max_length, name, obs_is_image=False
   
   return env
 
-def _gym_atari(action_repeat, min_length, max_length, name, obs_is_image=False):
+def _gym_atari(action_repeat, episode_logging_file, min_length, max_length, name, obs_is_image=False):
   import gym
 
   env = gym.make(name)
 
-  env = control.wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False, max_and_skip=True, log_episode_return=True)
+  env = control.wrap_deepmind(env, episode_logging_file=episode_logging_file, episode_life=True, clip_rewards=True, frame_stack=False, scale=False, max_and_skip=True, log_episode_return=True)
 
   env = control.wrappers.DiscreteToBoxWrapper(env)
   env = control.wrappers.MinimumDuration(env, min_length)
@@ -210,7 +212,7 @@ def _gym_atari(action_repeat, min_length, max_length, name, obs_is_image=False):
   else:
     env = control.wrappers.ObservationDict(env, 'state')
 
-  env = control.wrappers.PixelObservationsAsGrayscale(env, (64, 64), np.uint8, 'image')
+  env = control.wrappers.PixelObservations(env, (64, 64), np.uint8, 'image')
   env = control.wrappers.ConvertTo32Bit(env)
 
   return env

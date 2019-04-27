@@ -4,6 +4,7 @@ import csv
 import os
 import imageio
 import os
+import collections
 
 VIZDOOM_NOOP_ACTION = None
 
@@ -60,6 +61,7 @@ class EpisodicLifeEnv(object):
 
         self.episode_reward = 0.0
         self.episode_reward_exp_avg = 0.0
+        self.episode_average_buffer = collections.deque(maxlen=100)
         self.timestep = 0
         self.episode = 0
 
@@ -97,28 +99,39 @@ class EpisodicLifeEnv(object):
         """
 
         if self.was_real_done:
-            self.episode_reward_exp_avg = self.episode_reward * 0.7 + self.episode_reward_exp_avg * 0.3 # should be opposite
-            print("Ending episode: ", str(self.timestep) + " " + str(self.episode) + " " + str(self.episode_reward) + " " + str(self.episode_reward_exp_avg))
 
-            if not(self.episode_logging_file is None):
-                if os.path.isfile(self.episode_logging_file):
-                    with open(self.episode_logging_file, 'a+') as f:
-                        writer = csv.writer(f)
-                        writer.writerow([self.timestep, self.episode, self.episode_reward])
+            # Calculate scores only for simulation, skipping training
+            if "phase" in kwargs and kwargs["phase"] == "simulate":
+
+                # Calc episode averages
+                self.episode_reward_exp_avg = self.episode_reward * 0.7 + self.episode_reward_exp_avg * 0.3 # should be opposite
+                self.episode_average_buffer.append(self.episode_reward)
+
+                print("-------")
+                print("Ended episode")
+                print("Timestep: ", self.timestep)
+                print("Episode: ", self.episode)
+                print("Reward: ", self.episode_reward)
+                print("100 episode avg: ", np.mean(np.array(self.episode_average_buffer)))
+                print("-------")
+                
+                # Record observations into a movie
+                if self.episode % 2 == 0:
+                    self.record_video()
                 else:
-                    with open(self.episode_logging_file, 'w') as f:
-                        writer = csv.writer(f)
-                        writer.writerow([self.timestep, self.episode, self.episode_reward])
+                    self.obs_buffer = []
 
-            obs = self._env.reset(**kwargs)
+                if not(self.episode_logging_file is None):
+                    if os.path.isfile(self.episode_logging_file):
+                        with open(self.episode_logging_file, 'a+') as f:
+                            writer = csv.writer(f)
+                            writer.writerow([self.timestep, self.episode, self.episode_reward])
+                    else:
+                        with open(self.episode_logging_file, 'w') as f:
+                            writer = csv.writer(f)
+                            writer.writerow([self.timestep, self.episode, self.episode_reward])
 
-            self.recording = False
-            
-            # Record observations into a movie
-            if self.episode % 10 == 0:
-                self.record_video()
-            else:
-                self.obs_buffer = []
+            obs = self._env.reset()
         
             self.episode_reward = 0.0
             self.episode += 1
@@ -141,7 +154,7 @@ class EpisodicLifeEnv(object):
                 os.remove(video_path)
 
             imageio.mimwrite(video_path, self.obs_buffer, fps=20.0)
-            print("Recorded MP4 episode!!!!")
+            print("Recorded MP4 episode!!!! at", video_path)
             print("------")
             self.obs_buffer = []
 
