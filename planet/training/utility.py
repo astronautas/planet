@@ -168,7 +168,7 @@ def train(model_fn, datasets, logdir, config):
           report_every=None,
           log_every=config.train_log_every,
           checkpoint_every=config.train_checkpoint_every)
-
+          
     if config.test_steps:
       trainer.add_phase(
           'test', config.test_steps, score, summary,

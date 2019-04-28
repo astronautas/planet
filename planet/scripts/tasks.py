@@ -157,8 +157,10 @@ def gym_vizdoom_takecover(config, params):
   max_length = 250
   min_length = config.batch_shape[1]
   state_components = ['reward']
-  env_ctor = functools.partial(_gym_vizdoom, action_repeat, min_length, max_length, 'VizdoomTakeCover-v0', True)
+  episode_logging_file = config.logdirectory + "/log.csv"
+  video_logging_file = config.logdirectory + "/output.mp4"
 
+  env_ctor = functools.partial(_gym_vizdoom, action_repeat, min_length, max_length, 'VizdoomTakeCover-v0', episode_logging_file, video_logging_file, True)
   return Task('gym_vizdoom_takecover', env_ctor, max_length, state_components)
 
 def _dm_control_env(action_repeat, max_length, domain, task):
@@ -172,13 +174,13 @@ def _dm_control_env(action_repeat, max_length, domain, task):
 
   return env
 
-def _gym_vizdoom(action_repeat, min_length, max_length, name, obs_is_image=False):
+def _gym_vizdoom(action_repeat, min_length, max_length, name, episode_logging_file, video_logging_file, obs_is_image=False):
   import gym
 
   env = gym.make(name)
 
-  timestamp = datetime.datetime.now().strftime("%I_%M_%b_%d_%Y")
-  env = control.wrap_vizdoom(env, episode_logging_file="/home/lukas/workspace/planet_runs/vizdoom_2/episodes_info_" + timestamp + ".csv")
+  # env = control.wrap_vizdoom(env, episode_logging_file="/home/lukas/workspace/planet_runs/vizdoom_2/episodes_info_" + timestamp + ".csv")
+  env = control.wrap_vizdoom(env, episode_logging_file=episode_logging_file, video_logging_file=video_logging_file)
 
   env = control.wrappers.DiscreteToBoxWrapper(env)
   env = control.wrappers.MinimumDuration(env, min_length)

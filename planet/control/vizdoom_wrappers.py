@@ -50,7 +50,7 @@ class EpisodicLifeEnv(object):
     def __getattr__(self, name):
         return getattr(self._env, name)
 
-    def __init__(self, env, episode_logging_file=None):
+    def __init__(self, env, episode_logging_file=None, video_logging_file=None):
         """Make end-of-life == end-of-episode, but only reset on true game over.
         Done by DeepMind for the DQN and co. since it helps value estimation.
         """
@@ -66,10 +66,13 @@ class EpisodicLifeEnv(object):
         self.episode = 0
 
         self.episode_logging_file = episode_logging_file
+        self.video_logging_file = video_logging_file
 
         self.record_video_every = 20
         self.recording = False
         self.obs_buffer = []
+
+        self.phase = None
 
     def step(self, action):
         obs, reward, done, info = self._env.step(action)
@@ -86,7 +89,7 @@ class EpisodicLifeEnv(object):
             self.episode_reward += reward
             self.timestep += 1
 
-        if not(self._env.state() is None):
+        if not(self._env.state() is None) and self.phase == "simulate":
             buff = np.transpose(self._env.state().screen_buffer, [1, 2, 0])
             self.obs_buffer.append(buff)
             
@@ -99,9 +102,12 @@ class EpisodicLifeEnv(object):
         """
 
         if self.was_real_done:
+            print("Timestep (multiply if batch): ", self.timestep)
+            print("Episode: ", self.episode)
 
             # Calculate scores only for simulation, skipping training
             if "phase" in kwargs and kwargs["phase"] == "simulate":
+                self.phase = "simulate"
 
                 # Calc episode averages
                 self.episode_reward_exp_avg = self.episode_reward * 0.7 + self.episode_reward_exp_avg * 0.3 # should be opposite
@@ -113,6 +119,7 @@ class EpisodicLifeEnv(object):
                 print("Episode: ", self.episode)
                 print("Reward: ", self.episode_reward)
                 print("100 episode avg: ", np.mean(np.array(self.episode_average_buffer)))
+                print("100 episode std: ", np.std(np.array(self.episode_average_buffer)))
                 print("-------")
                 
                 # Record observations into a movie
@@ -145,7 +152,7 @@ class EpisodicLifeEnv(object):
         return obs
     
     def record_video(self):
-        video_path = "/tmp/vizdoom_output.mp4"
+        video_path = self.video_logging_file
 
         if len(self.obs_buffer):
             print("------")
@@ -186,11 +193,11 @@ class ClipRewardEnv(object):
         """Bin reward to {+1, 0, -1} by its sign."""
         return np.sign(reward)
 
-def wrap_vizdoom(env, episode_logging_file, episode_life=True, clip_rewards=True, max_and_skip=True):
+def wrap_vizdoom(env, episode_logging_file, video_logging_file, episode_life=True, clip_rewards=True, max_and_skip=True):
     env = ExtractGameState(env)
 
     if episode_life:
-        env = EpisodicLifeEnv(env, episode_logging_file=episode_logging_file)
+        env = EpisodicLifeEnv(env, episode_logging_file=episode_logging_file, video_logging_file=video_logging_file)
 
     if clip_rewards:
         env = ClipRewardEnv(env)

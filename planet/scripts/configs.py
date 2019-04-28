@@ -30,6 +30,7 @@ from planet.scripts import tasks as tasks_lib
 
 
 def default(config, params):
+  config.logdirectory = params.logdir
   config.debug = False
   config.zero_step_losses = tools.AttrDict(_unlocked=True)
   config = _data_processing(config, params)
@@ -41,18 +42,28 @@ def default(config, params):
 
 def default_smaller(config, params):
   with params.unlocked:
-    params.batch_shape = [40, 25]
-    params.train_steps = 20000
+    params.batch_shape = [25, 50]
+    params.train_steps = 10000
     params.test_steps = 1000
     params.collect_every = 5000
 
   config = default(config, params)
   return config
 
+def testing_default_smaller(config, params):
+  with params.unlocked:
+    params.batch_shape = [25, 50]
+    params.train_steps = 0
+    params.test_steps = 50
+    params.collect_every = 999999999
+
+  config = default(config, params)
+  return config
+
 def reduced_overshooting(config, params):
   with params.unlocked:
-    params.batch_shape = [50, 12]
-    params.train_steps = 20000
+    params.batch_shape = [46, 25]
+    params.train_steps = 10000
     params.test_steps = 1000
     params.collect_every = 5000
 
@@ -60,12 +71,12 @@ def reduced_overshooting(config, params):
   return config
 
 # Need to change tasks config as well
-def testing(config, params):
+def testing_reduced_overshooting(config, params):
   with params.unlocked:
-    params.batch_shape = [24, 50]
-    params.train_steps = 1
-    params.test_steps = 2000
-    params.collect_every = 2e7
+    params.batch_shape = [46, 25]
+    params.train_steps = 0
+    params.test_steps = 1000
+    params.collect_every = 99999999
 
   config = default(config, params)
   return config
@@ -180,12 +191,12 @@ def _training_schedule(config, params):
   config.train_steps = int(params.get('train_steps', 2000))
   config.test_steps = int(params.get('test_steps', 100))
   config.max_steps = int(params.get('max_steps', 2e7))
-  config.train_log_every = config.train_steps
+  config.train_log_every = config.train_steps if config.train_steps else config.test_steps
   config.train_checkpoint_every = None
   config.test_checkpoint_every = int(
       params.get('checkpoint_every', config.test_steps))
   config.savers = [tools.AttrDict(exclude=(r'.*_temporary.*',))]
-  config.mean_metrics_every = config.train_steps // 10
+  config.mean_metrics_every = config.train_steps // 10 if config.train_steps else config.test_steps // 10
   config.train_dir = os.path.join(params.logdir, 'train_episodes')
   config.test_dir = os.path.join(params.logdir, 'test_episodes')
   config.random_collects = _initial_collection(config, params)
