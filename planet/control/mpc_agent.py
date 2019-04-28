@@ -18,7 +18,6 @@ from __future__ import print_function
 
 from tensorflow_probability import distributions as tfd
 import tensorflow as tf
-
 from planet.tools import nested
 
 class MPCAgent(object):
@@ -63,22 +62,35 @@ class MPCAgent(object):
     with tf.control_dependencies([prev_action]):
       use_obs = tf.ones(tf.shape(agent_indices), tf.bool)[:, None]
       _, state = self._cell((embedded, prev_action, use_obs), state)
-    action = self._config.planner(
-        self._cell, self._config.objective, state,
-        embedded.shape[1:].as_list(),
-        prev_action.shape[1:].as_list())
+
+    action = self._config.planner(self._cell, self._config.objective, state, embedded.shape[1:].as_list(), prev_action.shape[1:].as_list())
+
+    # First action is best action
     action = action[:, 0]
     
+    # Random exploration noise (if exploring)
     if self._config.exploration:
       scale = self._config.exploration.scale
+      
       if self._config.exploration.schedule:
         scale *= self._config.exploration.schedule(self._step)
-      action = tfd.Normal(action, scale).sample()
+
+      # Epsilon-greedy policy, with eps probability choose random action
+      action_shape = action.shape
+      
+      action = tf.reshape(tf.cond(tf.random.uniform(shape=(), minval=0.0, maxval=1.0) < scale, 
+                       lambda: tf.random.shuffle(tf.one_hot(indices=0, depth=action.shape[1])),
+                       lambda: action), action_shape)
+      
+      # action = tfd.Normal(action, scale).sample()
+
     action = tf.clip_by_value(action, -1, 1)
     remember_action = self._prev_action.assign(action)
+    
     remember_state = nested.map(
         lambda var, val: tf.scatter_update(var, agent_indices, val),
         self._state, state, flatten=True)
+
     with tf.control_dependencies(remember_state + (remember_action,)):
       return tf.identity(action), tf.constant('')
 

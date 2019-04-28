@@ -96,10 +96,10 @@ def atari(config, params):
 def debug(config, params):
   with params.unlocked:
     params.batch_shape = [25, 40]
-    params.train_steps = 40
+    params.train_steps = 100
     params.test_steps = 50
     params.max_steps = 100 * (30 * 30)
-    params.collect_every = 100
+    params.collect_every = 30
     params.num_seed_episodes = 2
   config = default(config, params)
   config.debug = True

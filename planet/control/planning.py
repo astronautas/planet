@@ -38,10 +38,12 @@ def cross_entropy_method(
 
   def iteration(mean_and_stddev, _):
     mean, stddev = mean_and_stddev
+
     # Sample action proposals from belief.
     normal = tf.random_normal((original_batch, amount, horizon) + action_shape)
     action = normal * stddev[:, None] + mean[:, None]
     action = tf.clip_by_value(action, min_action, max_action)
+
     # Evaluate proposal actions.
     action = tf.reshape(
         action, (extended_batch, horizon) + action_shape)
@@ -51,6 +53,7 @@ def cross_entropy_method(
     return_ = discounted_return.discounted_return(
         reward, length, discount)[:, 0]
     return_ = tf.reshape(return_, (original_batch, amount))
+    
     # Re-fit belief to the best ones.
     _, indices = tf.nn.top_k(return_, topk, sorted=False)
     indices += tf.range(original_batch)[:, None] * amount
