@@ -493,9 +493,11 @@ class MaximumDuration(object):
       raise RuntimeError('Must reset environment.')
     observ, reward, done, info = self._env.step(action)
     self._step += 1
+
     if self._step >= self._duration:
       done = True
       self._step = None
+      
     return observ, reward, done, info
 
   def reset(self, **kwargs):
@@ -561,6 +563,9 @@ class PadActions(object):
     self._env = env
     self._action_space = self._pad_box_space(spaces)
 
+  def __getattr__(self, name):
+    return getattr(self._env, name)
+
   @property
   def observation_space(self):
     return self._env.observation_space
@@ -601,9 +606,11 @@ class CollectGymDataset(object):
   def step(self, action, *args, **kwargs):
     if kwargs.get('blocking', True):
       transition = self._env.step(action, *args, **kwargs)
+      # action = self._env.action
       return self._process_step(action, *transition)
     else:
       future = self._env.step(action, *args, **kwargs)
+      # action = self._env.action
       return lambda: self._process_step(action, *future())
 
   def reset(self, *args, **kwargs):

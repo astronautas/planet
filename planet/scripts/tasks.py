@@ -34,9 +34,10 @@ import math
 from gym_vizdoom import (LIST_OF_ENVS, EXPLORATION_GOAL_FRAME, GOAL_REACHING_REWARD)
 import vizdoomgym
 import datetime
+import threading
+import time
 
 # from gym_vizdoom.logging.navigation_video_writer import NavigationVideoWriter
-
 
 Task = collections.namedtuple(
     'Task', 'name, env_ctor, max_length, state_components')
@@ -154,7 +155,7 @@ def gym_pong(config, params):
 
 def gym_vizdoom_takecover(config, params):
   action_repeat = params.get('action_repeat', 4)
-  max_length = 250
+  max_length = 500 // action_repeat
   min_length = config.batch_shape[1]
   state_components = ['reward']
   episode_logging_file = config.logdirectory + "/log.csv"
@@ -162,6 +163,59 @@ def gym_vizdoom_takecover(config, params):
 
   env_ctor = functools.partial(_gym_vizdoom, action_repeat, min_length, max_length, 'VizdoomTakeCover-v0', episode_logging_file, video_logging_file, True)
   return Task('gym_vizdoom_takecover', env_ctor, max_length, state_components)
+
+def gym_vizdoom_cig_singleplayer(config, params):
+  return gym_vizdoom_cig(config, params, -1, 1, 5029)
+
+def gym_vizdoom_cig_singleplayer_test(config, params):
+  return gym_vizdoom_cig(config, params, -1, 1, 5030)
+
+def gym_vizdoom_cig_0(config, params):
+  return gym_vizdoom_cig(config, params, 0, 3, 5029)
+
+def gym_vizdoom_cig_1(config, params):
+  return gym_vizdoom_cig(config, params, 1, 3, 5029)
+
+def gym_vizdoom_cig_2(config, params):
+  return gym_vizdoom_cig(config, params, 2, 3, 5029)
+
+def gym_vizdoom_cig_3(config, params):
+  return gym_vizdoom_cig(config, params, 3, 3, 5029)
+
+def gym_vizdoom_cig_4(config, params):
+  return gym_vizdoom_cig(config, params, 4, 3, 5029)
+
+def gym_vizdoom_cig_5(config, params):
+  return gym_vizdoom_cig(config, params, 5, 3, 5029)
+
+def gym_vizdoom_cig_6(config, params):
+  return gym_vizdoom_cig(config, params, 6, 3, 5029)
+
+# def gym_vizdoom_cig_0_test(config, params):
+#   return gym_vizdoom_cig(config, params, 0, 3, 5030)
+
+# def gym_vizdoom_cig_1_test(config, params):
+#   return gym_vizdoom_cig(config, params, 1, 3, 5030)  
+
+# def gym_vizdoom_cig_2_test(config, params):
+#   return gym_vizdoom_cig(config, params, 2, 3, 5030)  
+
+def gym_vizdoom_cig(config, params, agent_id, agents_total, port):
+  total_agents = agents_total
+
+  action_repeat = params.get('action_repeat', 8)
+  # max_length = 1000 // action_repeat
+  max_length = config.get('max_length', 1200 // action_repeat)
+  min_length = config.batch_shape[1]
+  state_components = ['reward']
+  episode_logging_file = config.logdirectory + "/log.csv"
+  video_logging_file = config.logdirectory + "/output.mp4"
+
+  env_ctor = functools.partial(_gym_vizdoom, action_repeat, min_length, max_length, "VizdoomCig-v0",
+                               episode_logging_file, video_logging_file, port, True, agent_id, total_agents, config.imitation)
+  
+  return Task(f'gym_vizdoom_multiduel_{agent_id}', env_ctor, max_length, state_components)
+
 
 def _dm_control_env(action_repeat, max_length, domain, task):
   from dm_control import suite
@@ -174,15 +228,21 @@ def _dm_control_env(action_repeat, max_length, domain, task):
 
   return env
 
-def _gym_vizdoom(action_repeat, min_length, max_length, name, episode_logging_file, video_logging_file, obs_is_image=False):
+def _gym_vizdoom(action_repeat, min_length, max_length, name, episode_logging_file, video_logging_file, port, obs_is_image=False, 
+                 agent_id=None, total_agents=0, imitation=False):
   import gym
 
-  env = gym.make(name)
+  if not(agent_id is None):
+      env = gym.make(name,  port=port, agent_id=agent_id, agents_total=total_agents)
+  else:
+    env = gym.make(name)
 
-  # env = control.wrap_vizdoom(env, episode_logging_file="/home/lukas/workspace/planet_runs/vizdoom_2/episodes_info_" + timestamp + ".csv")
+  # Vizdoom wrappers
   env = control.wrap_vizdoom(env, episode_logging_file=episode_logging_file, video_logging_file=video_logging_file)
-
   env = control.wrappers.DiscreteToBoxWrapper(env)
+
+  env = control.wrappers.ActionRepeat(env, action_repeat)
+
   env = control.wrappers.MinimumDuration(env, min_length)
   env = control.wrappers.MaximumDuration(env, max_length) # acting as barrier
 

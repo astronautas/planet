@@ -91,9 +91,8 @@ class InGraphBatchEnv(object):
     """
     with tf.name_scope('environment/simulate'):
       observ_dtype = self._parse_dtype(self._batch_env.observation_space)
-      observ, reward, done = tf.py_func(
-          lambda a: self._batch_env.step(a)[:3], [action],
-          [observ_dtype, tf.float32, tf.bool], name='step')
+      observ, reward, done = tf.py_func(lambda a: self._batch_env.step(a)[:3], [action], [observ_dtype, tf.float32, tf.bool], name='step')
+
       return tf.group(
           self._observ.assign(observ),
           self._action.assign(action),

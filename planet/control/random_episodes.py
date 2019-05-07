@@ -20,19 +20,22 @@ from planet.control import wrappers
 
 
 def random_episodes(env_ctor, num_episodes, output_dir=None):
+  print("RANDOM episodes")
+  
   env = env_ctor()
   env = wrappers.CollectGymDataset(env, output_dir)
   episodes = []
-  for _ in range(num_episodes):
+
+  for _ in range(num_episodes):    
     policy = lambda env, obs: env.action_space.sample()
     done = False
     obs = env.reset()
+
     while not done:
       action = policy(env, obs)
       obs, _, done, info = env.step(action)
     episodes.append(info['episode'])
-  try:
-    env.close()
-  except AttributeError:
-    pass
+
+  env.close()
+    
   return episodes

@@ -76,10 +76,12 @@ class BatchEnv(object):
     Returns:
       Batch of observations, rewards, and done flags.
     """
+
     for index, (env, action) in enumerate(zip(self._envs, actions)):
       if not env.action_space.contains(action):
         message = 'Invalid action at index {}: {}'
         raise ValueError(message.format(index, action))
+
     if self._blocking:
       transitions = [
           env.step(action)
@@ -89,11 +91,22 @@ class BatchEnv(object):
           env.step(action, blocking=False)
           for env, action in zip(self._envs, actions)]
       transitions = [transition() for transition in transitions]
+    
     observs, rewards, dones, infos = zip(*transitions)
+
+    # # Vizdoom hack
+    # dones_count = np.count_nonzero(dones)
+    
+    # print("Done: ", dones)
+    # if dones_count > 0:
+    #   done = np.ones_like(dones)
+    # print("Done: ", dones)
+
     observ = np.stack(observs)
     reward = np.stack(rewards)
     done = np.stack(dones)
     info = tuple(infos)
+
     return observ, reward, done, info
 
   def reset(self, indices=None):

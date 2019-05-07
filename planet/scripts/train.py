@@ -63,6 +63,7 @@ def process(logdir, args):
     config = getattr(configs, args.config)(config, args.params)
   training.utility.collect_initial_episodes(config)
   tf.reset_default_graph()
+  
   dataset = tools.numpy_episodes(
       config.train_dir, config.test_dir, config.batch_shape,
       loader=config.data_loader,
@@ -74,6 +75,7 @@ def process(logdir, args):
       max_length=config.max_length,
       max_episodes=config.max_episodes,
       action_noise=config.fixed_action_noise)
+
   for score in training.utility.train(
       training.define_model, dataset, logdir, config):
     yield score

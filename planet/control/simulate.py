@@ -189,9 +189,13 @@ def simulate_step(batch_env, algo, log=True, reset=False):
       Summary tensor.
     """
     assert agent_indices.shape.ndims == 1
+
     submit_score = mean_score.submit(tf.gather(score, agent_indices))
     submit_length = mean_length.submit(
         tf.cast(tf.gather(length, agent_indices), tf.float32))
+        
+    close_env = tf.py_func(batch_env.close, [], [])
+
     with tf.control_dependencies([submit_score, submit_length]):
       return algo.end_episode(agent_indices)
 

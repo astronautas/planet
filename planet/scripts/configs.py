@@ -30,6 +30,10 @@ from planet.scripts import tasks as tasks_lib
 
 
 def default(config, params):
+  with params.unlocked:
+    params.num_train_seed_episodes = params.get('num_train_seed_episodes', params.num_seed_episodes)
+    params.num_test_seed_episodes = params.get('num_test_seed_episodes', params.num_seed_episodes)
+
   config.logdirectory = params.logdir
   config.debug = False
   config.zero_step_losses = tools.AttrDict(_unlocked=True)
@@ -42,12 +46,43 @@ def default(config, params):
 
 def default_smaller(config, params):
   with params.unlocked:
-    params.batch_shape = [25, 50]
+    params.batch_shape = [27, 48]
     params.train_steps = 10000
     params.test_steps = 1000
     params.collect_every = 5000
 
   config = default(config, params)
+  return config
+
+def vizdoom_cig(config, params):
+  with params.unlocked:
+    params.batch_shape = [24, 49]
+    params.train_steps = 20000
+    params.test_steps = 2000
+    params.collect_every = 60000
+    config.max_length = 150
+    config.imitation = False
+    params.num_train_seed_episodes = 60
+    params.num_test_seed_episodes = 10
+
+  config = default(config, params)
+  return config
+
+def vizdoom_cig_imitation(config, params):
+  with params.unlocked:
+    params.batch_shape = [24, 49]
+    params.train_steps = 60000
+    params.test_steps = 4000
+    params.collect_every = 999999999
+    params.num_seed_episodes = 15
+    config.max_length = 200
+    config.imitation = True
+    params.num_train_seed_episodes = 60
+    params.num_test_seed_episodes = 10
+    config.max_steps = 1000000
+
+  config = default(config, params)
+
   return config
 
 def testing_default_smaller(config, params):
@@ -99,8 +134,9 @@ def debug(config, params):
     params.train_steps = 100
     params.test_steps = 50
     params.max_steps = 100 * (30 * 30)
-    params.collect_every = 30
-    params.num_seed_episodes = 2
+    params.collect_every = 100
+    params.num_seed_episodes = 1
+    
   config = default(config, params)
   config.debug = True
   return config
@@ -146,36 +182,59 @@ def _model_components(config, params):
 
 def _tasks(config, params):
   tasks = params.get('tasks', ['cheetah_run'])
+
   if tasks == 'all':
     tasks = [
         'cartpole_balance', 'cartpole_swingup', 'finger_spin', 'cheetah_run',
         'cup_catch', 'walker_walk', 'vizdoom_basic', 'gym_cheetah', 'gym_breakout', 'gym_seaquest', 'gym_pong', 'gym_vizdoom_takecover']
+
+  if tasks == 'gym_vizdoom_cig':
+    tasks = ['gym_vizdoom_cig_0', 'gym_vizdoom_cig_1', 'gym_vizdoom_cig_2', 'gym_vizdoom_cig_singleplayer_test', 'gym_vizdoom_cig_singleplayer']
+
+    # tasks = ['gym_vizdoom_cig_multiplayer', 'gym_vizdoom_cig_singleplayer']
+
   tasks = [getattr(tasks_lib, name)(config, params) for name in tasks]
+
+  # tasks = [getattr(tasks_lib, name)(config, params) for idx, name in enumerate(tasks)]
   config.isolate_envs = params.get('isolate_envs', 'thread')
-  def common_spaces_ctor(task, action_spaces):
+
+  env_ctor_called = 0
+  def common_spaces_ctor(task, action_spaces, index=None):
     env = task.env_ctor()
     env = control.wrappers.SelectObservations(env, ['image'])
     env = control.wrappers.PadActions(env, action_spaces)
+
     return env
+  
   if len(tasks) > 1:
     action_spaces = [task.env_ctor().action_space for task in tasks]
+
     for index, task in enumerate(tasks):
       env_ctor = functools.partial(common_spaces_ctor, task, action_spaces)
-      tasks[index] = tasks_lib.Task(
-          task.name, env_ctor, task.max_length, ['reward'])
+      # env_ctor = lambda: common_spaces_ctor(task, action_spaces)
+      tasks[index] = tasks_lib.Task(task.name, env_ctor, task.max_length, ['reward'])
+
   for name in tasks[0].state_components:
     config.heads[name] = networks.feed_forward
     config.zero_step_losses[name] = 1.0
-  config.tasks = tasks
+
+  config.tasks = tasks[:3]
+  config.test_tasks = tasks[3:4]
+  config.random_collect_tasks = [tasks[-1]]
+
+  assert len(config.tasks) == 3
+  assert len(config.test_tasks) == 1
+  assert len(config.random_collect_tasks) == 1
+
   return config
 
 
 def _loss_functions(config, params):
-  config.free_nats = params.get('free_nats', 2.0)
+  config.free_nats = params.get('free_nats', 3.0)
   config.stop_os_posterior_gradient = True
-  config.zero_step_losses.image = params.get('image_loss_scale', 1.0)
-  config.zero_step_losses.divergence = params.get('divergence_scale', 1.648e-03)
-  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 4.118e-05)
+  config.zero_step_losses.image = params.get('image_loss_scale', 0.008)
+  config.zero_step_losses.divergence = params.get('divergence_scale', 1.0) # was 1e-03
+  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 1e-3) # was 1e-05
   config.zero_step_losses.reward = params.get('reward_scale', 10.0)
   config.overshooting = params.get('overshooting', config.batch_shape[1] - 1) # was config.batch_shape[1] - 1
   config.overshooting_losses = config.zero_step_losses.copy(_unlocked=True)
@@ -185,7 +244,6 @@ def _loss_functions(config, params):
   del config.overshooting_losses['global_divergence']
   config.optimizers = _define_optimizers(config, params)
   return config
-
 
 def _training_schedule(config, params):
   config.train_steps = int(params.get('train_steps', 2000))
@@ -203,7 +261,7 @@ def _training_schedule(config, params):
   config.sim_collects = _active_collection(config, params)
   config.sim_summaries = tools.AttrDict(_unlocked=True)
 
-  for task in config.tasks:
+  for task in config.test_tasks:
     for horizon in params.get('summary_horizons', [12]):
       name = 'summary-{}-cem-{}'.format(task.name, horizon)
       config.sim_summaries[name] = _define_simulation(
@@ -224,7 +282,8 @@ def _define_optimizers(config, params):
   optimizers.main = functools.partial(
       tools.CustomOptimizer, include=r'.*', exclude=diagnostics, **kwargs)
   for name in config.heads:
-    assert config.zero_step_losses.get(name), name
+    # TODO: SHOULD BE ASSERTED
+    # assert config.zero_step_losses.get(name), name 
     # Diagnostic heads use separate optimizers to not interfere with the model.
     if name in gradient_heads:
       continue
@@ -235,28 +294,33 @@ def _define_optimizers(config, params):
 
 def _initial_collection(config, params):
   num_seed_episodes = params.get('num_seed_episodes', 5)
+  # num_seed_episodes = 1
   sims = tools.AttrDict(_unlocked=True)
-  for task in config.tasks:
+  
+  for task in config.random_collect_tasks:
     sims['train-' + task.name] = tools.AttrDict(
         task=task,
         save_episode_dir=config.train_dir,
-        num_episodes=num_seed_episodes)
+        num_episodes=params.num_train_seed_episodes)
+
     sims['test-' + task.name] = tools.AttrDict(
         task=task,
         save_episode_dir=config.test_dir,
-        num_episodes=num_seed_episodes)
+        num_episodes=params.num_test_seed_episodes)
+        
   return sims
 
 
 def _active_collection(config, params):
   sims = tools.AttrDict(_unlocked=True)
   batch_size = params.get('collect_batch_size', 1)
+
   for task in config.tasks:
     for index, horizon in enumerate(params.get('collect_horizons', [12])):
       sim = _define_simulation(task, config, params, horizon, batch_size)
       sim.unlock()
       sim.save_episode_dir = config.train_dir
-      sim.steps_after = params.get('collect_every', 5000)
+      sim.steps_after = params.get('collect_every', 0)
       sim.steps_every = params.get('collect_every', 5000)
       sim.exploration = tools.AttrDict(
           scale=params.get('exploration_noises', [0.3])[index],
@@ -264,6 +328,7 @@ def _active_collection(config, params):
               tools.schedule.linear,
               ramp=params.get('exploration_ramps', [0])[index]))
       sims['train-{}-cem-{}'.format(task.name, horizon)] = sim
+
       if params.get('collect_test', False):
         sim = sim.copy()
         sim.save_episode_dir = config.test_dir

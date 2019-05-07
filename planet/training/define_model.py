@@ -79,8 +79,9 @@ def define_model(data, trainer, config):
       config.zero_step_losses, cell, heads, step, zs_target, zs_prior,
       zs_posterior, zs_mask, config.free_nats, debug=config.debug)
   losses += [
-      loss * config.zero_step_losses[name] for name, loss in
+      tf.identity(loss * config.zero_step_losses[name], name=name) for name, loss in
       zero_step_losses.items()]
+
   if 'divergence' not in zero_step_losses:
     zero_step_losses['divergence'] = tf.zeros((), dtype=tf.float32)
 
@@ -94,21 +95,25 @@ def define_model(data, trainer, config):
         config.overshooting_losses, cell, heads, step, os_target, os_prior,
         os_posterior, os_mask, config.free_nats, debug=config.debug)
     losses += [
-        loss * config.overshooting_losses[name] for name, loss in
+        tf.identity(loss * config.overshooting_losses[name], name="overshooting/" + name) for name, loss in
         overshooting_losses.items()]
   else:
     overshooting_losses = {}
   if 'divergence' not in overshooting_losses:
     overshooting_losses['divergence'] = tf.zeros((), dtype=tf.float32)
-
+  
   # Workaround for TensorFlow deadlock bug.
+  unpacked_losses = losses
   loss = sum(losses)
+
   train_loss = tf.cond(
       tf.equal(phase, 'train'),
       lambda: loss,
       lambda: 0 * tf.get_variable('dummy_loss', (), tf.float32))
-  train_summary = utility.apply_optimizers(
-      train_loss, step, should_summarize, config.optimizers)
+      
+  (train_summary, loss, unpacked_losses) = utility.apply_optimizers(
+      train_loss, step, should_summarize, config.optimizers, unpacked_losses)
+
   # train_summary = tf.cond(
   #     tf.equal(phase, 'train'),
   #     lambda: utility.apply_optimizers(
@@ -150,10 +155,20 @@ def define_model(data, trainer, config):
         cell.dist_from_state(zs_posterior, zs_mask).entropy(), zs_mask)) /
         tf.reduce_sum(tf.to_float(zs_mask)))
     dependencies.append(utility.print_metrics((
-        ('score', score),
+        # ('score', score),
         ('loss', loss),
-        ('zs_entropy', zs_entropy),
-        ('zs_divergence', zero_step_losses['divergence']),
+        # ('loss_unpacked_0_zs_and_ov_reward', unpacked_losses[0] + unpacked_losses[4]),
+        # ('loss_unpacked_0_zs_and_ov_reward_sim', similarities[0]),
+        # ('loss_unpacked_1_zsimage', unpacked_losses[1]),
+        # ('loss_unpacked_1_zsimage_sim', similarities[1]),
+        # ('loss_unpacked_2_zsdivergence', unpacked_losses[2]),
+        # ('loss_unpacked_2_zsdivergence_sim', similarities[2]),
+        # ('loss_unpacked_3_gdivergence', unpacked_losses[3]),
+        # ('loss_unpacked_3_gdivergence_sim', similarities[3]),
+        # ('loss_unpacked_5_ovdivergence', unpacked_losses[5]),
+        # ('loss_unpacked_5_ovdivergence_sim', similarities[4]),
+        # ('zs_entropy', zs_entropy),
+        # ('zs_divergence', zero_step_losses['divergence']),
     ), step, config.mean_metrics_every))
   with tf.control_dependencies(dependencies):
     score = tf.identity(score)

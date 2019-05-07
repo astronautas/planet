@@ -5,6 +5,8 @@ import os
 import imageio
 import os
 import collections
+from vizdoom import GameVariable
+import cv2
 
 VIZDOOM_NOOP_ACTION = None
 
@@ -56,7 +58,6 @@ class EpisodicLifeEnv(object):
         """
         self._env = env
 
-        self.lives = 0
         self.was_real_done  = True
 
         self.episode_reward = 0.0
@@ -70,101 +71,79 @@ class EpisodicLifeEnv(object):
 
         self.record_video_every = 20
         self.recording = False
-        self.obs_buffer = []
+        self.obs_buffer = collections.deque(maxlen=5000)
 
         self.phase = None
 
+        self.recorded_already = False
+
     def step(self, action):
         obs, reward, done, info = self._env.step(action)
-        self.was_real_done = done
-        lives = self._env.lives()
 
-        if not(lives is None):
-            if lives < self.lives and lives > 0:
-                done = True
-
-            self.lives = lives
-
-        if not(self.episode_logging_file is None):
+        if self._phase == "simulate" and not(self.episode_logging_file is None):
             self.episode_reward += reward
             self.timestep += 1
 
-        if not(self._env.state() is None) and self.phase == "simulate":
+        if self._phase == "simulate" and self._env.state() != None and self.lives > 0:
             buff = np.transpose(self._env.state().screen_buffer, [1, 2, 0])
             self.obs_buffer.append(buff)
-            
+        
+        if self._phase == "simulate" and (self.lives == 0 and self.recorded_already == False):
+            self.recorded_already = True
+            self.finalize_episode_recording()
+            self.obs_buffer.clear()
+        
+        if self._phase == "simulate" and self.lives > 0:
+            self.recorded_already = False
+
         return obs, reward, done, info
 
+    def finalize_episode_recording(self):
+        self.episode_average_buffer.append(self.episode_reward)
+
+        print("-------")
+        print("Ended episode")
+        print("Timestep: ", self.timestep)
+        print("Episode: ", self.episode)
+        print("Reward: ", self.episode_reward)
+        print("100 episode avg: ", np.mean(np.array(self.episode_average_buffer)))
+        print("100 episode std: ", np.std(np.array(self.episode_average_buffer)))
+        print("-------")
+
+        self.record_video()
+
+        if not(self.episode_logging_file is None):
+            if os.path.isfile(self.episode_logging_file):
+                with open(self.episode_logging_file, 'a+') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([self.timestep, self.episode, self.episode_reward])
+            else:
+                with open(self.episode_logging_file, 'w') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([self.timestep, self.episode, self.episode_reward])
+
+        self.episode_reward = 0.0
+        self.episode = 0
+
     def reset(self, **kwargs):
-        """Reset only when lives are exhausted.
-        This way all states are still reachable even though lives are episodic,
-        and the learner need not know about any of this behind-the-scenes.
-        """
-
-        if self.was_real_done:
-            print("Timestep (multiply if batch): ", self.timestep)
-            print("Episode: ", self.episode)
-
-            # Calculate scores only for simulation, skipping training
-            if "phase" in kwargs and kwargs["phase"] == "simulate":
-                self.phase = "simulate"
-
-                # Calc episode averages
-                self.episode_reward_exp_avg = self.episode_reward * 0.7 + self.episode_reward_exp_avg * 0.3 # should be opposite
-                self.episode_average_buffer.append(self.episode_reward)
-
-                print("-------")
-                print("Ended episode")
-                print("Timestep: ", self.timestep)
-                print("Episode: ", self.episode)
-                print("Reward: ", self.episode_reward)
-                print("100 episode avg: ", np.mean(np.array(self.episode_average_buffer)))
-                print("100 episode std: ", np.std(np.array(self.episode_average_buffer)))
-                print("-------")
-                
-                # Record observations into a movie
-                if self.episode % 2 == 0:
-                    self.record_video()
-                else:
-                    self.obs_buffer = []
-
-                if not(self.episode_logging_file is None):
-                    if os.path.isfile(self.episode_logging_file):
-                        with open(self.episode_logging_file, 'a+') as f:
-                            writer = csv.writer(f)
-                            writer.writerow([self.timestep, self.episode, self.episode_reward])
-                    else:
-                        with open(self.episode_logging_file, 'w') as f:
-                            writer = csv.writer(f)
-                            writer.writerow([self.timestep, self.episode, self.episode_reward])
-
-            obs = self._env.reset()
-        
-            self.episode_reward = 0.0
-            self.episode += 1
-        else:
-            print("Fake reset: ", self._env.lives())
-            # no-op step to advance from terminal/lost life state
-            obs, _, _, _ = self._env.step(VIZDOOM_NOOP_ACTION)
-
-        if not(self._env.lives() is None): self.lives = self._env.lives()
-
-        return obs
+        self._phase = kwargs.get("phase", None)
+        return self._env.reset()
     
     def record_video(self):
         video_path = self.video_logging_file
-
+        
+        print("Trying to record")
         if len(self.obs_buffer):
             print("------")
             if os.path.isfile(video_path):
                 print("Removing existing mp4")
                 os.remove(video_path)
 
-            imageio.mimwrite(video_path, self.obs_buffer, fps=20.0)
+            imageio.mimwrite(video_path, self.obs_buffer, fps=25.0)
             print("Recorded MP4 episode!!!! at", video_path)
             print("------")
-            self.obs_buffer = []
-
+        else:
+            print("Queue empty")
 class ExtractGameState(object):
     def __init__(self, env):
         self._env = env
@@ -174,9 +153,14 @@ class ExtractGameState(object):
 
     def state(self):
         return self.game.get_state()
-
+    
+    @property
     def lives(self):
-        return self.game.get_state().game_variables[0] if not(self.game.get_state() is None) else None
+        if not(self.started):
+            return None
+
+        health = self.game.get_game_variable(GameVariable.HEALTH)
+        return max(health, 0) # as it sometimes gets negative
 
 class ClipRewardEnv(object):
     def __init__(self, env):
@@ -199,10 +183,10 @@ def wrap_vizdoom(env, episode_logging_file, video_logging_file, episode_life=Tru
     if episode_life:
         env = EpisodicLifeEnv(env, episode_logging_file=episode_logging_file, video_logging_file=video_logging_file)
 
-    if clip_rewards:
-        env = ClipRewardEnv(env)
+    # if clip_rewards:
+    #     env = ClipRewardEnv(env)
 
-    if max_and_skip:
-        env = MaxAndSkipEnv(env)
+    # if max_and_skip:
+    #     env = MaxAndSkipEnv(env)
 
     return env

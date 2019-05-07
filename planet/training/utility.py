@@ -27,6 +27,7 @@ from planet import control
 from planet import tools
 from planet.training import trainer as trainer_
 
+from multiprocessing import Process
 
 def set_up_logging():
   """Configure the TensorFlow logger."""
@@ -223,17 +224,18 @@ def compute_losses(
   return losses
 
 
-def apply_optimizers(loss, step, should_summarize, optimizers):
+def apply_optimizers(loss, step, should_summarize, optimizers, unpacked_losses):
   summaries = []
   training_ops = []
   for name, optimizer_cls in optimizers.items():
     with tf.variable_scope('optimizer_{}'.format(name)):
       optimizer = optimizer_cls(step=step, should_summarize=should_summarize)
-      optimize, opt_summary = optimizer.minimize(loss)
+      optimize, opt_summary, loss, unpacked_losses = optimizer.minimize(loss, unpacked_losses)
       training_ops.append(optimize)
       summaries.append(opt_summary)
+
   with tf.control_dependencies(training_ops):
-    return tf.cond(should_summarize, lambda: tf.summary.merge(summaries), str)
+    return tf.cond(should_summarize, lambda: (tf.summary.merge(summaries), loss, unpacked_losses), lambda: (str(), loss, unpacked_losses))
 
 
 def simulate_episodes(config, params, graph, expensive_summaries, name):
@@ -292,9 +294,12 @@ def collect_initial_episodes(config):
   items = config.random_collects.items()
   items = sorted(items, key=lambda x: x[0])
   existing = {}
+  processes = []
+
   for name, params in items:
     outdir = params.save_episode_dir
     tf.gfile.MakeDirs(outdir)
+
     if outdir not in existing:
       existing[outdir] = len(tf.gfile.Glob(os.path.join(outdir, '*.npz')))
     if params.num_episodes <= existing[outdir]:
