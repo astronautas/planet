@@ -31,7 +31,7 @@ import cv2
 from gym.spaces import MultiDiscrete, Box
 import datetime
 import math
-from gym_vizdoom import (LIST_OF_ENVS, EXPLORATION_GOAL_FRAME, GOAL_REACHING_REWARD)
+#from gym_vizdoom import (LIST_OF_ENVS, EXPLORATION_GOAL_FRAME, GOAL_REACHING_REWARD)
 import vizdoomgym
 import datetime
 import threading
