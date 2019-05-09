@@ -674,7 +674,22 @@ class CollectGymDataset(object):
     name = os.path.splitext(os.path.basename(filename))[0]
     print('Recorded episode {}.'.format(name))
 
+class OnDoneCloseEnvironmentWrapper(object):
+  def __init__(self, env):
+    self._env = env
 
+  def __getattr__(self, name):
+    return getattr(self._env, name)
+
+  def step(self, action):
+    obs, reward, done, info = self._env.step(action)
+
+    if done:
+      print("Closing an environment")
+      self._env.close()
+    
+    return obs, reward, done, info
+    
 class ConvertTo32Bit(object):
   """Convert data types of an OpenAI Gym environment to 32 bit."""
 

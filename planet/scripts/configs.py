@@ -54,6 +54,45 @@ def default_smaller(config, params):
   config = default(config, params)
   return config
 
+def vizdoom_cig_cloud_debug(config, params):
+  with params.unlocked:
+    params.batch_shape = [10, 10]
+    params.train_steps = 100
+    params.test_steps = 20
+    params.collect_every = 50
+    config.max_length = 50
+    config.imitation = False
+    params.num_train_seed_episodes = 1
+    params.num_test_seed_episodes = 1
+  config = default(config, params)
+  return config
+
+def vizdoom_cig_cloud(config, params):
+  with params.unlocked:
+    params.batch_shape = [130, 50]
+    params.train_steps = 50000
+    params.test_steps = 2000
+    params.collect_every = 15000
+    config.max_length = 150
+    config.imitation = False
+    params.num_train_seed_episodes = 5
+    params.num_test_seed_episodes = 5
+  config = default(config, params)
+  return config
+
+def vizdoom_cig_cloud_evaluate(config, params):
+  with params.unlocked:
+    params.batch_shape = [5, 50]
+    params.train_steps = 0
+    params.test_steps = 100
+    params.collect_every = 100000
+    config.max_length = 2000
+    config.imitation = False
+    params.num_train_seed_episodes = 5
+    params.num_test_seed_episodes = 5
+  config = default(config, params)
+  return config
+
 def vizdoom_cig(config, params):
   with params.unlocked:
     params.batch_shape = [24, 49]
@@ -148,7 +187,7 @@ def _data_processing(config, params):
   config.data_loader = params.get('data_loader', 'scan')
   config.batch_shape = params.get('batch_shape', (15, 50))
   config.num_chunks = params.get('num_chunks', 1)
-  image_bits = params.get('image_bits', 5)
+  image_bits = params.get('image_bits', 3)
   config.preprocess_fn = functools.partial(
       tools.preprocess.preprocess, bits=image_bits)
   config.postprocess_fn = functools.partial(
@@ -188,8 +227,34 @@ def _tasks(config, params):
         'cartpole_balance', 'cartpole_swingup', 'finger_spin', 'cheetah_run',
         'cup_catch', 'walker_walk', 'vizdoom_basic', 'gym_cheetah', 'gym_breakout', 'gym_seaquest', 'gym_pong', 'gym_vizdoom_takecover']
 
-  if tasks == 'gym_vizdoom_cig':
-    tasks = ['gym_vizdoom_cig_0', 'gym_vizdoom_cig_1', 'gym_vizdoom_cig_2', 'gym_vizdoom_cig_singleplayer_test', 'gym_vizdoom_cig_singleplayer']
+  if tasks == ['gym_vizdoom_cig']:
+    tasks = []
+
+    # Multi Planet Train Tasks
+    tasks.append('gym_vizdoom_cig_0_1')
+    tasks.append('gym_vizdoom_cig_1_1')
+    tasks.append('gym_vizdoom_cig_2_1')
+    # tasks.append('gym_vizdoom_cig_3_1')
+    # tasks.append('gym_vizdoom_cig_4_1')
+    # tasks.append('gym_vizdoom_cig_5_1')
+    # tasks.append('gym_vizdoom_cig_6_1')
+    # tasks.append('gym_vizdoom_cig_7_1')
+    # tasks.append('gym_vizdoom_cig_8_1')
+
+    # Multi Planet Test Tasks
+    tasks.append('gym_vizdoom_cig_0_2')
+    tasks.append('gym_vizdoom_cig_1_2')
+    tasks.append('gym_vizdoom_cig_2_2')
+    # tasks.append('gym_vizdoom_cig_3_2')
+    # tasks.append('gym_vizdoom_cig_4_2')
+    # tasks.append('gym_vizdoom_cig_5_2')
+    # tasks.append('gym_vizdoom_cig_6_2')
+    # tasks.append('gym_vizdoom_cig_7_2')
+    # tasks.append('gym_vizdoom_cig_8_2')
+
+    tasks.append('gym_vizdoom_cig_singleplayer')
+
+    # tasks = ['gym_vizdoom_cig_0', 'gym_vizdoom_cig_1', 'gym_vizdoom_cig_2', 'gym_vizdoom_cig_singleplayer_test', 'gym_vizdoom_cig_singleplayer']
 
     # tasks = ['gym_vizdoom_cig_multiplayer', 'gym_vizdoom_cig_singleplayer']
 
@@ -218,12 +283,12 @@ def _tasks(config, params):
     config.heads[name] = networks.feed_forward
     config.zero_step_losses[name] = 1.0
 
-  config.tasks = tasks[:3]
-  config.test_tasks = tasks[3:4]
+  config.tasks = tasks[0:3]
+  config.test_tasks = tasks[3:6]
   config.random_collect_tasks = [tasks[-1]]
 
   assert len(config.tasks) == 3
-  assert len(config.test_tasks) == 1
+  assert len(config.test_tasks) == 3
   assert len(config.random_collect_tasks) == 1
 
   return config
