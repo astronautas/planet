@@ -69,15 +69,29 @@ def vizdoom_cig_cloud_debug(config, params):
 
 def vizdoom_cig_cloud(config, params):
   with params.unlocked:
-    params.batch_shape = [130, 50]
-    params.train_steps = 50000
+    params.batch_shape = [128, 50]
+    params.train_steps = 70000
     params.test_steps = 2000
-    params.collect_every = 15000
-    config.max_length = 150
+    params.collect_every = 20000
+    config.max_length = 500
     config.imitation = False
     params.num_train_seed_episodes = 5
     params.num_test_seed_episodes = 5
   config = default(config, params)
+  return config
+
+def vizdoom_takecover_cloud_evaluate(config, params):
+  with params.unlocked:
+    params.batch_shape = [130, 50]
+    params.train_steps = 50000
+    params.test_steps = 2000
+    params.collect_every = 5000
+    config.max_length = 500
+    params.num_train_seed_episodes = 5
+    params.num_test_seed_episodes = 5
+    
+  config = default(config, params)
+
   return config
 
 def vizdoom_cig_cloud_evaluate(config, params):
@@ -218,6 +232,39 @@ def _model_components(config, params):
     raise NotImplementedError("Unknown model '{}.".format(params.model))
   return config
 
+def vizdoom_takecover_tasks(config, params):
+  tasks = params.get('tasks', ['cheetah_run'])
+
+  tasks = [getattr(tasks_lib, name)(config, params) for name in tasks]
+
+  # tasks = [getattr(tasks_lib, name)(config, params) for idx, name in enumerate(tasks)]
+  config.isolate_envs = params.get('isolate_envs', 'thread')
+
+  env_ctor_called = 0
+  def common_spaces_ctor(task, action_spaces, index=None):
+    env = task.env_ctor()
+    env = control.wrappers.SelectObservations(env, ['image'])
+    env = control.wrappers.PadActions(env, action_spaces)
+
+    return env
+  
+  if len(tasks) > 1:
+    action_spaces = [task.env_ctor().action_space for task in tasks]
+
+    for index, task in enumerate(tasks):
+      env_ctor = functools.partial(common_spaces_ctor, task, action_spaces)
+      # env_ctor = lambda: common_spaces_ctor(task, action_spaces)
+      tasks[index] = tasks_lib.Task(task.name, env_ctor, task.max_length, ['reward'])
+
+  for name in tasks[0].state_components:
+    config.heads[name] = networks.feed_forward
+    config.zero_step_losses[name] = 1.0
+
+  config.tasks = tasks
+  config.test_tasks = tasks
+  config.random_collect_tasks = tasks
+
+  return config
 
 def _tasks(config, params):
   tasks = params.get('tasks', ['cheetah_run'])
@@ -231,9 +278,9 @@ def _tasks(config, params):
     tasks = []
 
     # Multi Planet Train Tasks
-    tasks.append('gym_vizdoom_cig_0_1')
-    tasks.append('gym_vizdoom_cig_1_1')
-    tasks.append('gym_vizdoom_cig_2_1')
+    # tasks.append('gym_vizdoom_cig_0_1')
+    # tasks.append('gym_vizdoom_cig_1_1')
+    # tasks.append('gym_vizdoom_cig_2_1')
     # tasks.append('gym_vizdoom_cig_3_1')
     # tasks.append('gym_vizdoom_cig_4_1')
     # tasks.append('gym_vizdoom_cig_5_1')
@@ -242,9 +289,9 @@ def _tasks(config, params):
     # tasks.append('gym_vizdoom_cig_8_1')
 
     # Multi Planet Test Tasks
-    tasks.append('gym_vizdoom_cig_0_2')
-    tasks.append('gym_vizdoom_cig_1_2')
-    tasks.append('gym_vizdoom_cig_2_2')
+    # tasks.append('gym_vizdoom_cig_0_2')
+    # tasks.append('gym_vizdoom_cig_1_2')
+    # tasks.append('gym_vizdoom_cig_2_2')
     # tasks.append('gym_vizdoom_cig_3_2')
     # tasks.append('gym_vizdoom_cig_4_2')
     # tasks.append('gym_vizdoom_cig_5_2')
@@ -283,30 +330,31 @@ def _tasks(config, params):
     config.heads[name] = networks.feed_forward
     config.zero_step_losses[name] = 1.0
 
-  config.tasks = tasks[0:3]
-  config.test_tasks = tasks[3:6]
+  config.tasks = [tasks[-1]]
+  config.test_tasks = [tasks[-1]]
   config.random_collect_tasks = [tasks[-1]]
 
-  assert len(config.tasks) == 3
-  assert len(config.test_tasks) == 3
+  assert len(config.tasks) == 1
+  assert len(config.test_tasks) == 1
   assert len(config.random_collect_tasks) == 1
 
   return config
 
-
 def _loss_functions(config, params):
-  config.free_nats = params.get('free_nats', 3.0)
+  config.free_nats = params.get('free_nats', 5.0)
   config.stop_os_posterior_gradient = True
-  config.zero_step_losses.image = params.get('image_loss_scale', 0.008)
-  config.zero_step_losses.divergence = params.get('divergence_scale', 1.0) # was 1e-03
-  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 1e-3) # was 1e-05
+  config.zero_step_losses.image = params.get('image_loss_scale', 1.0)
+  config.zero_step_losses.divergence = params.get('divergence_scale', 0.2) # was 1e-03
+  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 1e-2) # was 1e-05
   config.zero_step_losses.reward = params.get('reward_scale', 10.0)
   config.overshooting = params.get('overshooting', config.batch_shape[1] - 1) # was config.batch_shape[1] - 1
   config.overshooting_losses = config.zero_step_losses.copy(_unlocked=True)
   config.overshooting_losses.reward = params.get(
       'overshooting_reward_scale', 100.0)
+
   del config.overshooting_losses['image']
   del config.overshooting_losses['global_divergence']
+
   config.optimizers = _define_optimizers(config, params)
   return config
 
@@ -341,7 +389,7 @@ def _define_optimizers(config, params):
   diagnostics = r'.*/head_(?!{})[a-z]+/.*'.format('|'.join(gradient_heads))
   kwargs = dict(
       optimizer_cls=functools.partial(tf.train.AdamOptimizer, epsilon=1e-4),
-      learning_rate=params.get('learning_rate', 1e-3),
+      learning_rate=params.get('learning_rate', 0.7e-3),
       schedule=functools.partial(tools.schedule.linear, ramp=10000),
       clipping=params.get('gradient_clipping', 1000.0))
   optimizers.main = functools.partial(

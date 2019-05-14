@@ -78,9 +78,12 @@ def define_model(data, trainer, config):
   zero_step_losses = utility.compute_losses(
       config.zero_step_losses, cell, heads, step, zs_target, zs_prior,
       zs_posterior, zs_mask, config.free_nats, debug=config.debug)
-  losses += [
-      tf.identity(loss * config.zero_step_losses[name], name=name) for name, loss in
-      zero_step_losses.items()]
+
+  # losses += [tf.identity(tf.maximum(loss * config.zero_step_losses[name], 30.0), name=name) if name == "image" else tf.identity(loss * config.zero_step_losses[name], name=name) 
+  #             for name, loss in zero_step_losses.items()]
+
+  losses += [tf.maximum(loss * config.zero_step_losses[name], 57.0, name=("maximum/" + name)) if name == 'image'
+              else tf.identity(loss * config.zero_step_losses[name], name=name) for name, loss in zero_step_losses.items()]
 
   if 'divergence' not in zero_step_losses:
     zero_step_losses['divergence'] = tf.zeros((), dtype=tf.float32)
@@ -104,6 +107,7 @@ def define_model(data, trainer, config):
   
   # Workaround for TensorFlow deadlock bug.
   unpacked_losses = losses
+
   loss = sum(losses)
 
   train_loss = tf.cond(

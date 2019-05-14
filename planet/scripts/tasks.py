@@ -171,7 +171,7 @@ def gym_vizdoom_cig_singleplayer_test(config, params):
   return gym_vizdoom_cig(config, params, -1, 2, 5030)
 
 # Train tasks
-TOTAL_AGENTS = 3
+TOTAL_AGENTS = 7
 def gym_vizdoom_cig_0_1(config, params):
   return gym_vizdoom_cig(config, params, 0, TOTAL_AGENTS, 5029)
 
@@ -200,32 +200,34 @@ def gym_vizdoom_cig_8_1(config, params):
   return gym_vizdoom_cig(config, params, 8, TOTAL_AGENTS, 5029)
 
 # Test tasks
+TOTAL_AGENTS_TEST = 1
+
 def gym_vizdoom_cig_0_2(config, params):
-  return gym_vizdoom_cig(config, params, 0, TOTAL_AGENTS, 5030)
+  return gym_vizdoom_cig(config, params, 0, TOTAL_AGENTS_TEST, 5030)
 
 def gym_vizdoom_cig_1_2(config, params):
-  return gym_vizdoom_cig(config, params, 1, TOTAL_AGENTS, 5030)
+  return gym_vizdoom_cig(config, params, 1, TOTAL_AGENTS_TEST, 5031)
 
 def gym_vizdoom_cig_2_2(config, params):
-  return gym_vizdoom_cig(config, params, 2, TOTAL_AGENTS, 5030)
+  return gym_vizdoom_cig(config, params, 2, TOTAL_AGENTS_TEST, 5032)
 
 def gym_vizdoom_cig_3_2(config, params):
-  return gym_vizdoom_cig(config, params, 3, TOTAL_AGENTS, 5030)
+  return gym_vizdoom_cig(config, params, 3, TOTAL_AGENTS_TEST, 5033)
 
 def gym_vizdoom_cig_4_2(config, params):
-  return gym_vizdoom_cig(config, params, 4, TOTAL_AGENTS, 5030)
+  return gym_vizdoom_cig(config, params, 4, TOTAL_AGENTS_TEST, 5034)
 
 def gym_vizdoom_cig_5_2(config, params):
-  return gym_vizdoom_cig(config, params, 5, TOTAL_AGENTS, 5030)
+  return gym_vizdoom_cig(config, params, 5, TOTAL_AGENTS_TEST, 5035)
 
 def gym_vizdoom_cig_6_2(config, params):
-  return gym_vizdoom_cig(config, params, 6, TOTAL_AGENTS, 5030)
+  return gym_vizdoom_cig(config, params, 6, TOTAL_AGENTS_TEST, 5036)
 
 def gym_vizdoom_cig_7_2(config, params):
-  return gym_vizdoom_cig(config, params, 7, TOTAL_AGENTS, 5030)
+  return gym_vizdoom_cig(config, params, 7, TOTAL_AGENTS_TEST, 5037)
 
 def gym_vizdoom_cig_8_2(config, params):
-  return gym_vizdoom_cig(config, params, 8, TOTAL_AGENTS, 5030)  
+  return gym_vizdoom_cig(config, params, 8, TOTAL_AGENTS_TEST, 5038)  
 
 def gym_vizdoom_cig(config, params, agent_id, agents_total, port):
   total_agents = agents_total
