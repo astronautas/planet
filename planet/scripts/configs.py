@@ -440,9 +440,7 @@ def _initial_collection(config, params):
 def _active_collection(config, params):
   sims = tools.AttrDict(_unlocked=True)
   batch_size = params.get('collect_batch_size', 1)
-  print(batch_size)
-  input()
-  
+
   for task in config.tasks:
     for index, horizon in enumerate(params.get('collect_horizons', [12])):
       sim = _define_simulation(task, config, params, horizon, batch_size)
