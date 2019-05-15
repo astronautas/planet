@@ -62,8 +62,21 @@ def vizdoom_cig_cloud_debug(config, params):
     params.collect_every = 50
     config.max_length = 50
     config.imitation = False
-    params.num_train_seed_episodes = 1
-    params.num_test_seed_episodes = 1
+    params.num_train_seed_episodes = 5
+    params.num_test_seed_episodes = 5
+  config = default(config, params)
+  return config
+
+def vizdoom_cig_local(config, params):
+  with params.unlocked:
+    params.batch_shape = [24, 50]
+    params.train_steps = 20000
+    params.test_steps = 2000
+    params.collect_every = 10000
+    config.max_length = 200
+    config.imitation = False
+    params.num_train_seed_episodes = 5
+    params.num_test_seed_episodes = 5
   config = default(config, params)
   return config
 
@@ -341,11 +354,11 @@ def _tasks(config, params):
   return config
 
 def _loss_functions(config, params):
-  config.free_nats = params.get('free_nats', 5.0)
+  config.free_nats = params.get('free_nats', 10.0)
   config.stop_os_posterior_gradient = True
   config.zero_step_losses.image = params.get('image_loss_scale', 1.0)
-  config.zero_step_losses.divergence = params.get('divergence_scale', 0.2) # was 1e-03
-  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 1e-2) # was 1e-05
+  config.zero_step_losses.divergence = params.get('divergence_scale', 1e-03) # was 1e-03
+  config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 1e-5) # was 1e-05
   config.zero_step_losses.reward = params.get('reward_scale', 10.0)
   config.overshooting = params.get('overshooting', config.batch_shape[1] - 1) # was config.batch_shape[1] - 1
   config.overshooting_losses = config.zero_step_losses.copy(_unlocked=True)
@@ -427,7 +440,9 @@ def _initial_collection(config, params):
 def _active_collection(config, params):
   sims = tools.AttrDict(_unlocked=True)
   batch_size = params.get('collect_batch_size', 1)
-
+  print(batch_size)
+  input()
+  
   for task in config.tasks:
     for index, horizon in enumerate(params.get('collect_horizons', [12])):
       sim = _define_simulation(task, config, params, horizon, batch_size)

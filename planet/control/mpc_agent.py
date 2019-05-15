@@ -73,9 +73,7 @@ class MPCAgent(object):
       scale = self._config.exploration.scale
       
       if self._config.exploration.schedule:
-        scale = tf.Print(scale, [scale], "Scale")
         scale *= self._config.exploration.schedule(self._step)
-        scale = tf.Print(scale, [scale], "Scale")
 
       # Epsilon-greedy policy, with eps probability choose random action
       action_shape = action.shape

@@ -171,8 +171,8 @@ def define_model(data, trainer, config):
         # ('loss_unpacked_3_gdivergence_sim', similarities[3]),
         # ('loss_unpacked_5_ovdivergence', unpacked_losses[5]),
         # ('loss_unpacked_5_ovdivergence_sim', similarities[4]),
-        # ('zs_entropy', zs_entropy),
-        # ('zs_divergence', zero_step_losses['divergence']),
+        ('zs_entropy', zs_entropy),
+        ('zs_divergence', zero_step_losses['divergence']),
     ), step, config.mean_metrics_every))
   with tf.control_dependencies(dependencies):
     score = tf.identity(score)

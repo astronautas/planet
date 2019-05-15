@@ -165,10 +165,10 @@ def gym_vizdoom_takecover(config, params):
   return Task('gym_vizdoom_takecover', env_ctor, max_length, state_components)
 
 def gym_vizdoom_cig_singleplayer(config, params):
-  return gym_vizdoom_cig(config, params, -1, 1, 5029)
+  return gym_vizdoom_cig(config, params, 0, 1, 5029)
 
 def gym_vizdoom_cig_singleplayer_test(config, params):
-  return gym_vizdoom_cig(config, params, -1, 2, 5030)
+  return gym_vizdoom_cig(config, params, 0, 2, 5030)
 
 # Train tasks
 TOTAL_AGENTS = 7
