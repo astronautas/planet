@@ -626,6 +626,7 @@ class CollectGymDataset(object):
     self._transition.update(info)
     self._episode.append(self._transition)
     self._transition = {}
+    
     if not done:
       self._transition.update(self._process_observ(observ))
     else:
@@ -634,6 +635,7 @@ class CollectGymDataset(object):
       if self._outdir:
         filename = self._get_filename()
         self._write(episode, filename)
+
     return observ, reward, done, info
 
   def _process_reset(self, observ):

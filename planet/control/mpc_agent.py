@@ -19,6 +19,7 @@ from __future__ import print_function
 from tensorflow_probability import distributions as tfd
 import tensorflow as tf
 from planet.tools import nested
+import numpy as np
 
 class MPCAgent(object):
 
@@ -67,7 +68,7 @@ class MPCAgent(object):
 
     # First action is best action
     action = action[:, 0]
-    
+
     # Random exploration noise (if exploring)
     if self._config.exploration:
       scale = self._config.exploration.scale
@@ -78,9 +79,13 @@ class MPCAgent(object):
       # Epsilon-greedy policy, with eps probability choose random action
       action_shape = action.shape
 
-      
+      # print(action.shape[0])
+      # print(action.shape[1])
+      # print(sf.shape)
+      # input()
+
       action = tf.reshape(tf.cond(tf.random.uniform(shape=(), minval=0.0, maxval=1.0) < scale, 
-                       lambda: tf.random.shuffle(tf.one_hot(indices=0, depth=action.shape[1])),
+                       lambda: tf.random.shuffle(tf.one_hot(indices=[0] * action.shape[0], depth=action.shape[1])),
                        lambda: action), action_shape)
       
       # action = tfd.Normal(action, scale).sample()

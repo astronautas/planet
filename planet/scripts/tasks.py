@@ -165,40 +165,42 @@ def gym_vizdoom_takecover(config, params):
   return Task('gym_vizdoom_takecover', env_ctor, max_length, state_components)
 
 def gym_vizdoom_cig_singleplayer(config, params):
-  return gym_vizdoom_cig(config, params, 0, 1, 5029)
+  return gym_vizdoom_cig(config, params, 0, 1, 5029, config['max_length'])
 
 def gym_vizdoom_cig_singleplayer_test(config, params):
-  return gym_vizdoom_cig(config, params, 0, 2, 5030)
+  return gym_vizdoom_cig(config, params, 0, 1, 5030, config['max_length_test'])
 
 # Train tasks
-TOTAL_AGENTS = 7
+TOTAL_AGENTS = 10
 def gym_vizdoom_cig_0_1(config, params):
-  return gym_vizdoom_cig(config, params, 0, TOTAL_AGENTS, 5029)
+  return gym_vizdoom_cig(config, params, 0, TOTAL_AGENTS, 5029, config['max_length'])
 
 def gym_vizdoom_cig_1_1(config, params):
-  return gym_vizdoom_cig(config, params, 1, TOTAL_AGENTS, 5029)
+  return gym_vizdoom_cig(config, params, 1, TOTAL_AGENTS, 5029, config['max_length'])
 
 def gym_vizdoom_cig_2_1(config, params):
-  return gym_vizdoom_cig(config, params, 2, TOTAL_AGENTS, 5029)
+  return gym_vizdoom_cig(config, params, 2, TOTAL_AGENTS, 5029, config['max_length'])
 
 def gym_vizdoom_cig_3_1(config, params):
-  return gym_vizdoom_cig(config, params, 3, TOTAL_AGENTS, 5029)
+  return gym_vizdoom_cig(config, params, 3, TOTAL_AGENTS, 5029, config['max_length'])
 
 def gym_vizdoom_cig_4_1(config, params):
-  return gym_vizdoom_cig(config, params, 4, TOTAL_AGENTS, 5029)
+  return gym_vizdoom_cig(config, params, 4, TOTAL_AGENTS, 5029, config['max_length'])
 
 def gym_vizdoom_cig_5_1(config, params):
-  return gym_vizdoom_cig(config, params, 5, TOTAL_AGENTS, 5029)
+  return gym_vizdoom_cig(config, params, 5, TOTAL_AGENTS, 5029, config['max_length'])
 
 def gym_vizdoom_cig_6_1(config, params):
-  return gym_vizdoom_cig(config, params, 6, TOTAL_AGENTS, 5029)
+  return gym_vizdoom_cig(config, params, 6, TOTAL_AGENTS, 5029, config['max_length'])
 
 def gym_vizdoom_cig_7_1(config, params):
-  return gym_vizdoom_cig(config, params, 7, TOTAL_AGENTS, 5029)
+  return gym_vizdoom_cig(config, params, 7, TOTAL_AGENTS, 5029, config['max_length'])
 
 def gym_vizdoom_cig_8_1(config, params):
-  return gym_vizdoom_cig(config, params, 8, TOTAL_AGENTS, 5029)
+  return gym_vizdoom_cig(config, params, 8, TOTAL_AGENTS, 5029, config['max_length'])
 
+def gym_vizdoom_cig_9_1(config, params):
+  return gym_vizdoom_cig(config, params, 9, TOTAL_AGENTS, 5029, config['max_length'])
 # Test tasks
 TOTAL_AGENTS_TEST = 1
 
@@ -229,12 +231,12 @@ def gym_vizdoom_cig_7_2(config, params):
 def gym_vizdoom_cig_8_2(config, params):
   return gym_vizdoom_cig(config, params, 8, TOTAL_AGENTS_TEST, 5038)  
 
-def gym_vizdoom_cig(config, params, agent_id, agents_total, port):
+def gym_vizdoom_cig(config, params, agent_id, agents_total, port, max_length):
   total_agents = agents_total
 
   action_repeat = params.get('action_repeat', 2)
   # max_length = 1000 // action_repeat
-  max_length = config.get('max_length', 1200 // action_repeat)
+  max_length = max_length
   min_length = config.batch_shape[1]
   state_components = ['reward']
   episode_logging_file = config.logdirectory + "/log.csv"

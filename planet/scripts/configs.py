@@ -61,6 +61,7 @@ def vizdoom_cig_cloud_debug(config, params):
     params.test_steps = 20
     params.collect_every = 50
     config.max_length = 50
+    config.max_length_test = 50
     config.imitation = False
     params.num_train_seed_episodes = 5
     params.num_test_seed_episodes = 5
@@ -82,11 +83,12 @@ def vizdoom_cig_local(config, params):
 
 def vizdoom_cig_cloud(config, params):
   with params.unlocked:
-    params.batch_shape = [128, 50]
-    params.train_steps = 70000
+    params.batch_shape = [120, 50]
+    params.train_steps = 30000
     params.test_steps = 2000
     params.collect_every = 20000
     config.max_length = 500
+    config.max_length_test = 2000
     config.imitation = False
     params.num_train_seed_episodes = 5
     params.num_test_seed_episodes = 5
@@ -95,10 +97,10 @@ def vizdoom_cig_cloud(config, params):
 
 def vizdoom_takecover_cloud_evaluate(config, params):
   with params.unlocked:
-    params.batch_shape = [130, 50]
+    params.batch_shape = [20, 50]
     params.train_steps = 50000
     params.test_steps = 2000
-    params.collect_every = 5000
+    params.collect_every = 20000
     config.max_length = 500
     params.num_train_seed_episodes = 5
     params.num_test_seed_episodes = 5
@@ -291,15 +293,16 @@ def _tasks(config, params):
     tasks = []
 
     # Multi Planet Train Tasks
-    # tasks.append('gym_vizdoom_cig_0_1')
-    # tasks.append('gym_vizdoom_cig_1_1')
-    # tasks.append('gym_vizdoom_cig_2_1')
-    # tasks.append('gym_vizdoom_cig_3_1')
-    # tasks.append('gym_vizdoom_cig_4_1')
-    # tasks.append('gym_vizdoom_cig_5_1')
-    # tasks.append('gym_vizdoom_cig_6_1')
-    # tasks.append('gym_vizdoom_cig_7_1')
-    # tasks.append('gym_vizdoom_cig_8_1')
+    tasks.append('gym_vizdoom_cig_0_1')
+    tasks.append('gym_vizdoom_cig_1_1')
+    tasks.append('gym_vizdoom_cig_2_1')
+    tasks.append('gym_vizdoom_cig_3_1')
+    tasks.append('gym_vizdoom_cig_4_1')
+    tasks.append('gym_vizdoom_cig_5_1')
+    tasks.append('gym_vizdoom_cig_6_1')
+    tasks.append('gym_vizdoom_cig_7_1')
+    tasks.append('gym_vizdoom_cig_8_1')
+    tasks.append('gym_vizdoom_cig_9_1')
 
     # Multi Planet Test Tasks
     # tasks.append('gym_vizdoom_cig_0_2')
@@ -312,6 +315,7 @@ def _tasks(config, params):
     # tasks.append('gym_vizdoom_cig_7_2')
     # tasks.append('gym_vizdoom_cig_8_2')
 
+    tasks.append('gym_vizdoom_cig_singleplayer_test')
     tasks.append('gym_vizdoom_cig_singleplayer')
 
     # tasks = ['gym_vizdoom_cig_0', 'gym_vizdoom_cig_1', 'gym_vizdoom_cig_2', 'gym_vizdoom_cig_singleplayer_test', 'gym_vizdoom_cig_singleplayer']
@@ -343,8 +347,8 @@ def _tasks(config, params):
     config.heads[name] = networks.feed_forward
     config.zero_step_losses[name] = 1.0
 
-  config.tasks = [tasks[-1]]
-  config.test_tasks = [tasks[-1]]
+  config.tasks = [tasks[-2]]
+  config.test_tasks = [tasks[-2]]
   config.random_collect_tasks = [tasks[-1]]
 
   assert len(config.tasks) == 1
@@ -357,7 +361,7 @@ def _loss_functions(config, params):
   config.free_nats = params.get('free_nats', 10.0)
   config.stop_os_posterior_gradient = True
   config.zero_step_losses.image = params.get('image_loss_scale', 1.0)
-  config.zero_step_losses.divergence = params.get('divergence_scale', 1e-03) # was 1e-03
+  config.zero_step_losses.divergence = params.get('divergence_scale', 0.7e-1) # was 1e-03
   config.zero_step_losses.global_divergence = params.get('global_divergence_scale', 1e-5) # was 1e-05
   config.zero_step_losses.reward = params.get('reward_scale', 10.0)
   config.overshooting = params.get('overshooting', config.batch_shape[1] - 1) # was config.batch_shape[1] - 1
@@ -402,7 +406,7 @@ def _define_optimizers(config, params):
   diagnostics = r'.*/head_(?!{})[a-z]+/.*'.format('|'.join(gradient_heads))
   kwargs = dict(
       optimizer_cls=functools.partial(tf.train.AdamOptimizer, epsilon=1e-4),
-      learning_rate=params.get('learning_rate', 0.7e-3),
+      learning_rate=params.get('learning_rate', 1e-3),
       schedule=functools.partial(tools.schedule.linear, ramp=10000),
       clipping=params.get('gradient_clipping', 1000.0))
   optimizers.main = functools.partial(

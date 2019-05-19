@@ -82,8 +82,8 @@ def define_model(data, trainer, config):
   # losses += [tf.identity(tf.maximum(loss * config.zero_step_losses[name], 30.0), name=name) if name == "image" else tf.identity(loss * config.zero_step_losses[name], name=name) 
   #             for name, loss in zero_step_losses.items()]
 
-  losses += [tf.maximum(loss * config.zero_step_losses[name], 57.0, name=("maximum/" + name)) if name == 'image'
-              else tf.identity(loss * config.zero_step_losses[name], name=name) for name, loss in zero_step_losses.items()]
+  # losses += [tf.maximum(loss * config.zero_step_losses[name], 57.0, name=("maximum/" + name)) if name == 'image'
+  #             else tf.identity(loss * config.zero_step_losses[name], name=name) for name, loss in zero_step_losses.items()]
 
   if 'divergence' not in zero_step_losses:
     zero_step_losses['divergence'] = tf.zeros((), dtype=tf.float32)
